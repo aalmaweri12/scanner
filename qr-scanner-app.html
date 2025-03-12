@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Barcode Scanner</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        #video-container {
+            position: relative;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        #video {
+            width: 100%;
+            border-radius: 8px;
+            background-color: #000;
+        }
+        #canvas {
+            display: none;
+        }
+        #scanBtn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        #scanBtn:hover {
+            background-color: #45a049;
+        }
+        #scanBtn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            word-break: break-all;
+        }
+        .scan-area {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 70%;
+            height: 70%;
+            transform: translate(-50%, -50%);
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.3);
+            pointer-events: none;
+        }
+        .corners {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-color: #4CAF50;
+            border-width: 4px;
+        }
+        .top-left {
+            top: -2px;
+            left: -2px;
+            border-top-style: solid;
+            border-left-style: solid;
+            border-top-left-radius: 8px;
+        }
+        .top-right {
+            top: -2px;
+            right: -2px;
+            border-top-style: solid;
+            border-right-style: solid;
+            border-top-right-radius: 8px;
+        }
+        .bottom-left {
+            bottom: -2px;
+            left: -2px;
+            border-bottom-style: solid;
+            border-left-style: solid;
+            border-bottom-left-radius: 8px;
+        }
+        .bottom-right {
+            bottom: -2px;
+            right: -2px;
+            border-bottom-style: solid;
+            border-right-style: solid;
+            border-bottom-right-radius: 8px;
+        }
+        .history {
+            margin-top: 20px;
+            width: 100%;
+        }
+        .history h3 {
+            margin-bottom: 10px;
+        }
+        .history-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        .history-item .content {
+            flex: 1;
+            word-break: break-all;
+        }
+        .history-item .timestamp {
+            color: #888;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 5px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <h1>2D Barcode Scanner</h1>
+    
+    <div class="container">
+        <div id="video-container">
+            <video id="video" playsinline></video>
+            <canvas id="canvas"></canvas>
+            <div class="scan-area">
+                <div class="corners top-left"></div>
+                <div class="corners top-right"></div>
+                <div class="corners bottom-left"></div>
+                <div class="corners bottom-right"></div>
+            </div>
+        </div>
+        
+        <button id="scanBtn">Start Camera</button>
+        
+        <div id="result">No barcode detected</div>
+        
+        <div class="history">
+            <h3>Scan History</h3>
+            <div id="historyList"></div>
+        </div>
+    </div>
+    
+    <div id="toast" class="toast"></div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const scanBtn = document.getElementById('scanBtn');
+        const resultDiv = document.getElementById('result');
+        const historyList = document.getElementById('historyList');
+        const toast = document.getElementById('toast');
+        
+        let stream = null;
+        let scanning = false;
+        let scanHistory = [];
+        
+        // Load scan history from localStorage
+        if (localStorage.getItem('scanHistory')) {
+            try {
+                scanHistory = JSON.parse(localStorage.getItem('scanHistory'));
+                renderHistory();
+            } catch (e) {
+                console.error('Error loading scan history', e);
+                localStorage.removeItem('scanHistory');
+            }
+        }
+        
+        // Start camera
+        scanBtn.addEventListener('click', function() {
+            if (scanning) {
+                stopCamera();
+            } else {
+                startCamera();
+            }
+        });
+        
+        function startCamera() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                })
+                .then(function(s) {
+                    stream = s;
+                    video.srcObject = stream;
+                    video.setAttribute('playsinline', true);
+                    video.play();
+                    scanning = true;
+                    scanBtn.textContent = 'Stop Camera';
+                    requestAnimationFrame(tick);
+                    showToast('Camera started. Point at a barcode to scan.');
+                })
+                .catch(function(err) {
+                    console.error('Error accessing camera:', err);
+                    showToast('Error accessing camera. Please check permissions.');
+                });
+            } else {
+                showToast('Your browser does not support camera access.');
+            }
+        }
+        
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+                scanning = false;
+                scanBtn.textContent = 'Start Camera';
+            }
+        }
+        
+        function tick() {
+            if (video.readyState === video.HAVE_ENOUGH_DATA && scanning) {
+                canvas.height = video.videoHeight;
+                canvas.width = video.videoWidth;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                
+                // jsQR detection
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "dontInvert",
+                });
+                
+                if (code) {
+                    // We found a barcode
+                    const lastScan = scanHistory.length > 0 ? scanHistory[0].content : null;
+                    
+                    // Only add to history if it's a new code
+                    if (lastScan !== code.data) {
+                        resultDiv.innerText = code.data;
+                        
+                        // Add to history
+                        addToHistory(code.data);
+                        
+                        // Visual feedback
+                        showToast('Barcode detected!');
+                    }
+                }
+                
+                requestAnimationFrame(tick);
+            } else if (scanning) {
+                requestAnimationFrame(tick);
+            }
+        }
+        
+        function addToHistory(content) {
+            const timestamp = new Date().toLocaleString();
+            scanHistory.unshift({ content, timestamp });
+            
+            // Limit history to 20 items
+            if (scanHistory.length > 20) {
+                scanHistory = scanHistory.slice(0, 20);
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('scanHistory', JSON.stringify(scanHistory));
+            
+            renderHistory();
+        }
+        
+        function renderHistory() {
+            historyList.innerHTML = '';
+            scanHistory.forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                
+                const content = document.createElement('div');
+                content.className = 'content';
+                content.textContent = item.content;
+                
+                const time = document.createElement('div');
+                time.className = 'timestamp';
+                time.textContent = item.timestamp;
+                
+                historyItem.appendChild(content);
+                historyItem.appendChild(time);
+                historyList.appendChild(historyItem);
+                
+                // Make history items clickable
+                historyItem.addEventListener('click', function() {
+                    resultDiv.innerText = item.content;
+                    navigator.clipboard.writeText(item.content)
+                        .then(() => showToast('Copied to clipboard!'))
+                        .catch(err => console.error('Could not copy text: ', err));
+                });
+            });
+        }
+        
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(function() {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Initialize proper height for mobile
+        function setInitialHeight() {
+            document.body.style.height = window.innerHeight + 'px';
+        }
+        
+        window.addEventListener('resize', setInitialHeight);
+        setInitialHeight();
+    </script>
+</body>
+</html>
