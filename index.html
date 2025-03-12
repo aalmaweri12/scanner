@@ -3,54 +3,182 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF417 Scanner (Back Camera)</title>
+    <title>Enhanced PDF417 Scanner</title>
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-        video { width: 100%; max-width: 600px; border: 2px solid #333; }
-        #result { margin-top: 20px; font-size: 18px; font-weight: bold; }
-        button { padding: 10px 20px; font-size: 16px; margin-top: 10px; }
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            margin: 20px; 
+            background-color: #f5f5f5;
+        }
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        video { 
+            width: 100%; 
+            max-width: 600px; 
+            border: 2px solid #333; 
+            display: block;
+        }
+        #scan-region {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 25%;
+            border: 3px solid red;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+        #scan-region.detected {
+            border-color: #00cc00;
+        }
+        #result { 
+            margin-top: 20px; 
+            font-size: 18px; 
+            font-weight: bold;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        button { 
+            padding: 12px 24px; 
+            font-size: 16px; 
+            margin-top: 15px;
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #3367d6;
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
 
-    <h2>PDF417 Barcode Scanner (Back Camera)</h2>
-    <video id="video" autoplay></video>
-    <button onclick="startScan()">Start Scan</button>
-    <p id="result">Scan a barcode...</p>
+    <h2>Enhanced PDF417 Scanner</h2>
+    <p class="status">Position the PDF417 barcode within the scanning area</p>
+    
+    <div class="video-container">
+        <video id="video" autoplay playsinline></video>
+        <div id="scan-region"></div>
+    </div>
+    
+    <button id="startButton" onclick="startScan()">Start Scan</button>
+    <p id="result">Scan a PDF417 barcode...</p>
 
     <script>
         let video = document.getElementById('video');
         let resultText = document.getElementById('result');
+        let scanRegion = document.getElementById('scan-region');
+        let startButton = document.getElementById('startButton');
         let selectedDeviceId = null;
         const codeReader = new ZXing.BrowserMultiFormatReader();
+        
+        // Configure hints to focus on PDF417 format only
+        const formats = [ZXing.BarcodeFormat.PDF_417];
+        const hints = new Map();
+        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+        
+        codeReader.hints = hints;
 
         async function startScan() {
             try {
+                startButton.disabled = true;
+                startButton.textContent = "Scanning...";
+                resultText.innerText = "Looking for PDF417 barcode...";
+                
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const videoDevices = devices.filter(device => device.kind === 'videoinput');
 
                 if (videoDevices.length > 1) {
                     // Try to find the back camera
-                    selectedDeviceId = videoDevices.find(device => device.label.toLowerCase().includes('back'))?.deviceId || videoDevices[0].deviceId;
+                    selectedDeviceId = videoDevices.find(device => 
+                        device.label.toLowerCase().includes('back'))?.deviceId || videoDevices[0].deviceId;
                 } else if (videoDevices.length === 1) {
                     selectedDeviceId = videoDevices[0].deviceId;
                 } else {
                     resultText.innerText = "No camera found!";
+                    startButton.disabled = false;
+                    startButton.textContent = "Try Again";
                     return;
                 }
 
-                codeReader.decodeFromVideoDevice(selectedDeviceId, video, (result, err) => {
-                    if (result) {
-                        resultText.innerText = "Scanned Code: " + result.text;
-                        codeReader.reset(); // Stop scanning after a successful scan
+                // Set camera constraints with improved focus
+                const constraints = {
+                    video: {
+                        deviceId: selectedDeviceId,
+                        facingMode: "environment",
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        advanced: [
+                            { focusMode: "continuous" },
+                            { zoom: 1 }
+                        ]
                     }
-                });
+                };
+
+                // Start continuous scanning
+                codeReader.decodeFromConstraints(
+                    constraints, 
+                    video, 
+                    (result, err) => {
+                        if (result && result.getBarcodeFormat() === ZXing.BarcodeFormat.PDF_417) {
+                            // PDF417 barcode detected
+                            scanRegion.classList.add("detected");
+                            resultText.innerText = "PDF417 Scanned: " + result.getText();
+                            
+                            // Keep scanning but update the UI
+                            setTimeout(() => {
+                                startButton.disabled = false;
+                                startButton.textContent = "Scan Again";
+                            }, 1000);
+                        } else {
+                            // Reset the detection indicator if no PDF417 is detected
+                            scanRegion.classList.remove("detected");
+                        }
+                        
+                        if (err && !(err instanceof ZXing.NotFoundException)) {
+                            console.error(err);
+                        }
+                    }
+                );
             } catch (error) {
                 console.error("Error starting scan:", error);
-                resultText.innerText = "Camera access denied!";
+                resultText.innerText = "Camera access denied or error!";
+                startButton.disabled = false;
+                startButton.textContent = "Try Again";
             }
         }
+
+        // Function to stop scanning
+        function stopScan() {
+            codeReader.reset();
+            startButton.disabled = false;
+            startButton.textContent = "Start Scan";
+            scanRegion.classList.remove("detected");
+        }
+        
+        // Handle page visibility changes to manage resources
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopScan();
+            }
+        });
     </script>
 
 </body>
