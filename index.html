@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF417 Scanner</title>
+    <title>PDF417 Scanner (Back Camera)</title>
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
@@ -14,7 +14,7 @@
 </head>
 <body>
 
-    <h2>PDF417 Barcode Scanner</h2>
+    <h2>PDF417 Barcode Scanner (Back Camera)</h2>
     <video id="video" autoplay></video>
     <button onclick="startScan()">Start Scan</button>
     <p id="result">Scan a barcode...</p>
@@ -27,18 +27,25 @@
 
         async function startScan() {
             try {
-                const devices = await codeReader.getVideoInputDevices();
-                if (devices.length > 0) {
-                    selectedDeviceId = devices[0].deviceId;
-                    codeReader.decodeFromVideoDevice(selectedDeviceId, video, (result, err) => {
-                        if (result) {
-                            resultText.innerText = "Scanned Code: " + result.text;
-                            codeReader.reset(); // Stop scanning after a successful scan
-                        }
-                    });
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+
+                if (videoDevices.length > 1) {
+                    // Try to find the back camera
+                    selectedDeviceId = videoDevices.find(device => device.label.toLowerCase().includes('back'))?.deviceId || videoDevices[0].deviceId;
+                } else if (videoDevices.length === 1) {
+                    selectedDeviceId = videoDevices[0].deviceId;
                 } else {
                     resultText.innerText = "No camera found!";
+                    return;
                 }
+
+                codeReader.decodeFromVideoDevice(selectedDeviceId, video, (result, err) => {
+                    if (result) {
+                        resultText.innerText = "Scanned Code: " + result.text;
+                        codeReader.reset(); // Stop scanning after a successful scan
+                    }
+                });
             } catch (error) {
                 console.error("Error starting scan:", error);
                 resultText.innerText = "Camera access denied!";
