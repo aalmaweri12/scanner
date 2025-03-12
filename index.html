@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF417 ID Scanner</title>
-    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <title>Simple PDF417 Scanner</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/barkoder-sdk@latest"></script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
         video { width: 100%; max-width: 600px; border: 2px solid #333; }
@@ -13,49 +14,40 @@
     </style>
 </head>
 <body>
-
-    <h2>PDF417 Barcode Scanner (US ID & Passport)</h2>
-    <video id="video" autoplay></video>
-    <button onclick="startScan()">Start Scan</button>
-    <p id="result">Scan the barcode on your ID...</p>
+    <div id="app">
+        <h2>PDF417 Scanner</h2>
+        <video id="video" autoplay></video>
+        <button @click="startScan">Start Scan</button>
+        <p id="result">Scan a PDF417 barcode...</p>
+    </div>
 
     <script>
-        let video = document.getElementById('video');
-        let resultText = document.getElementById('result');
-        let selectedDeviceId = null;
-        const codeReader = new ZXing.BrowserMultiFormatReader();
+        const { createApp, ref } = Vue;
 
-        async function startScan() {
-            try {
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        createApp({
+            setup() {
+                const resultText = ref("Scan a PDF417 barcode...");
+                let Barkoder;
 
-                if (videoDevices.length > 1) {
-                    // Prefer the back camera
-                    selectedDeviceId = videoDevices.find(device => device.label.toLowerCase().includes('back'))?.deviceId || videoDevices[0].deviceId;
-                } else if (videoDevices.length === 1) {
-                    selectedDeviceId = videoDevices[0].deviceId;
-                } else {
-                    resultText.innerText = "No camera found!";
-                    return;
+                async function startScan() {
+                    try {
+                        Barkoder = await BarkoderSDK.initialize("YOUR_LICENSE_KEY"); // Replace with your Barkoder SDK key
+                        Barkoder.setCameraResolution(1); // Set resolution to high
+                        Barkoder.setEnabledDecoders(BarkoderSDK.constants.BarcodeTypes.PDF417); // Only allow PDF417
+                        
+                        Barkoder.startScanner(result => {
+                            resultText.value = `Raw Data:\n${result.textualData}`;
+                            Barkoder.stopScanner(); // Stop scanning after first scan
+                        });
+                    } catch (error) {
+                        console.error("Error:", error);
+                        resultText.value = "Error starting scanner!";
+                    }
                 }
 
-                codeReader.decodeFromVideoDevice(selectedDeviceId, video, (result, err) => {
-                    if (result) {
-                        if (result.barcodeFormat === "PDF_417") {  // Ensure it only scans PDF417
-                            resultText.innerText = `Scanned PDF417 Code:\n${result.text}`;
-                            codeReader.reset(); // Stop scanning after success
-                        } else {
-                            resultText.innerText = "Not a PDF417 barcode!";
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error("Error starting scan:", error);
-                resultText.innerText = "Camera access denied!";
+                return { startScan, resultText };
             }
-        }
+        }).mount("#app");
     </script>
-
 </body>
 </html>
