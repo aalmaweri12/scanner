@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimized MRZ Scanner</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; background-color: #f5f5f5; }
+        .video-container { position: relative; width: 100%; max-width: 600px; margin: 0 auto; }
+        video { width: 100%; max-width: 600px; border: 2px solid #333; display: block; }
+        canvas { display: none; }
+        #scan-region { position: absolute; bottom: 15%; left: 50%; transform: translateX(-50%); width: 92%; height: 20%; border: 3px solid red; }
+        #scan-region.detected { border-color: #00cc00; }
+        #result { margin-top: 20px; font-size: 16px; font-weight: bold; padding: 10px; background-color: #fff; border-radius: 5px; }
+        .controls { margin-top: 15px; display: flex; justify-content: center; gap: 10px; }
+        button { padding: 12px 24px; font-size: 16px; background-color: #4285f4; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #3367d6; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        .loading { display: none; width: 30px; height: 30px; border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin: 15px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #debug-image { max-width: 100%; margin-top: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+    <h2>Optimized MRZ Scanner</h2>
+    <p>Align the MRZ within the scanning area and click "Capture MRZ"</p>
+
+    <div class="video-container">
+        <video id="video" autoplay playsinline></video>
+        <div id="scan-region"></div>
+    </div>
+
+    <div class="controls">
+        <button id="startButton" onclick="startScanning()">Start Camera</button>
+        <button id="captureButton" onclick="captureAndProcess()" disabled>Capture MRZ</button>
+    </div>
+
+    <p id="result">Waiting for scan...</p>
+    <img id="debug-image" alt="Processed Image" />
+
+    <script>
+        let video = document.getElementById('video');
+        let resultText = document.getElementById('result');
+        let scanRegion = document.getElementById('scan-region');
+        let startButton = document.getElementById('startButton');
+        let captureButton = document.getElementById('captureButton');
+        let debugImage = document.getElementById('debug-image');
+        
+        let canvas = document.createElement('canvas');
+        let ctx = canvas.getContext('2d');
+        let videoStream = null;
+
+        async function startScanning() {
+            try {
+                resultText.innerText = "Accessing camera...";
+                
+                const constraints = {
+                    video: {
+                        facingMode: "environment",
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                };
+
+                videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = videoStream;
+
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    resultText.innerText = "Camera ready. Position MRZ and tap 'Capture MRZ'";
+                    captureButton.disabled = false;
+                };
+            } catch (error) {
+                console.error("Error starting camera:", error);
+                resultText.innerText = "Camera access denied!";
+            }
+        }
+
+        async function captureAndProcess() {
+            try {
+                captureButton.disabled = true;
+                resultText.innerText = "Processing MRZ...";
+
+                // Draw video frame to canvas
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                // Extract MRZ region
+                const scanRect = scanRegion.getBoundingClientRect();
+                const videoRect = video.getBoundingClientRect();
+                
+                const relX = (scanRect.left - videoRect.left) / videoRect.width;
+                const relY = (scanRect.top - videoRect.top) / videoRect.height;
+                const relWidth = scanRect.width / videoRect.width;
+                const relHeight = scanRect.height / videoRect.height;
+
+                const cropX = relX * canvas.width;
+                const cropY = relY * canvas.height;
+                const cropWidth = relWidth * canvas.width;
+                const cropHeight = relHeight * canvas.height;
+
+                const croppedCanvas = document.createElement('canvas');
+                const croppedCtx = croppedCanvas.getContext('2d');
+                croppedCanvas.width = cropWidth;
+                croppedCanvas.height = cropHeight;
+                croppedCtx.drawImage(canvas, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+
+                // Show the processed image for debugging
+                debugImage.src = croppedCanvas.toDataURL();
+                debugImage.style.display = "block";
+
+                // Run OCR with Tesseract.js
+                const { data } = await Tesseract.recognize(croppedCanvas, 'eng', {
+                    tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
+                    tessedit_pageseg_mode: 6
+                });
+
+                let mrzText = data.text.trim();
+                console.log("Raw MRZ OCR Result:", mrzText);
+
+                // ✅ Fix misread characters
+                mrzText = mrzText
+                    .replace(/L/g, '<')  // Replace misread 'L' with '<'
+                    .replace(/K/g, '<')  // Replace misread 'K' with '<'
+                    .replace(/\|/g, '<') // Replace misread '|'
+                    .replace(/\s+/g, ''); // Remove unnecessary spaces
+
+                console.log("Corrected MRZ Text:", mrzText);
+
+                if (mrzText.length > 20 && mrzText.includes('<')) {
+                    scanRegion.classList.add("detected");
+                    resultText.innerText = `MRZ Detected:\n${mrzText}`;
+                } else {
+                    resultText.innerText = "No valid MRZ detected. Please try again.";
+                }
+            } catch (error) {
+                console.error("Error processing image:", error);
+                resultText.innerText = "Error processing image. Please try again.";
+            } finally {
+                captureButton.disabled = false;
+            }
+        }
+
+        window.addEventListener('beforeunload', () => {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
+        });
+    </script>
+
+</body>
+</html>

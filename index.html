@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Optimized MRZ Scanner</title>
+    <title>MRZ & PDF417 Scanner</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 20px; background-color: #f5f5f5; }
+        .scanner-container { display: none; }
         .video-container { position: relative; width: 100%; max-width: 600px; margin: 0 auto; }
         video { width: 100%; max-width: 600px; border: 2px solid #333; display: block; }
         canvas { display: none; }
@@ -16,138 +18,148 @@
         .controls { margin-top: 15px; display: flex; justify-content: center; gap: 10px; }
         button { padding: 12px 24px; font-size: 16px; background-color: #4285f4; color: white; border: none; cursor: pointer; }
         button:hover { background-color: #3367d6; }
-        button:disabled { background-color: #cccccc; cursor: not-allowed; }
-        .loading { display: none; width: 30px; height: 30px; border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin: 15px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #debug-image { max-width: 100%; margin-top: 10px; display: none; }
+        .scanner-toggle { margin-bottom: 20px; }
     </style>
 </head>
 <body>
 
-    <h2>Optimized MRZ Scanner</h2>
-    <p>Align the MRZ within the scanning area and click "Capture MRZ"</p>
+    <h2>MRZ & PDF417 Scanner</h2>
 
-    <div class="video-container">
-        <video id="video" autoplay playsinline></video>
-        <div id="scan-region"></div>
+    <div class="scanner-toggle">
+        <button onclick="toggleScanner('mrz')">MRZ Scanner</button>
+        <button onclick="toggleScanner('pdf417')">PDF417 Scanner</button>
     </div>
 
-    <div class="controls">
-        <button id="startButton" onclick="startScanning()">Start Camera</button>
-        <button id="captureButton" onclick="captureAndProcess()" disabled>Capture MRZ</button>
+    <!-- MRZ Scanner -->
+    <div id="mrz-scanner" class="scanner-container">
+        <h3>MRZ Scanner</h3>
+        <p>Align the MRZ within the scanning area and click "Capture MRZ"</p>
+        <div class="video-container">
+            <video id="mrz-video" autoplay playsinline></video>
+            <div id="scan-region"></div>
+        </div>
+        <div class="controls">
+            <button id="startMrzButton" onclick="startMRZScanning()">Start Camera</button>
+            <button id="captureMrzButton" onclick="captureAndProcessMRZ()" disabled>Capture MRZ</button>
+        </div>
+        <p id="mrz-result">Waiting for scan...</p>
+        <img id="debug-mrz-image" alt="Processed Image" />
     </div>
 
-    <p id="result">Waiting for scan...</p>
-    <img id="debug-image" alt="Processed Image" />
+    <!-- PDF417 Scanner -->
+    <div id="pdf417-scanner" class="scanner-container">
+        <h3>PDF417 Scanner</h3>
+        <p>Position the PDF417 barcode within the scanning area</p>
+        <div class="video-container">
+            <video id="pdf417-video" autoplay playsinline></video>
+        </div>
+        <button id="startPdf417Button" onclick="startPDF417Scan()">Start Scan</button>
+        <p id="pdf417-result">Scan a PDF417 barcode...</p>
+    </div>
 
     <script>
-        let video = document.getElementById('video');
-        let resultText = document.getElementById('result');
+        let activeScanner = null;
+        function toggleScanner(scannerType) {
+            document.getElementById("mrz-scanner").style.display = (scannerType === 'mrz') ? "block" : "none";
+            document.getElementById("pdf417-scanner").style.display = (scannerType === 'pdf417') ? "block" : "none";
+            activeScanner = scannerType;
+        }
+
+        // MRZ Scanner Variables
+        let mrzVideo = document.getElementById('mrz-video');
+        let mrzResultText = document.getElementById('mrz-result');
         let scanRegion = document.getElementById('scan-region');
-        let startButton = document.getElementById('startButton');
-        let captureButton = document.getElementById('captureButton');
-        let debugImage = document.getElementById('debug-image');
-        
-        let canvas = document.createElement('canvas');
-        let ctx = canvas.getContext('2d');
-        let videoStream = null;
+        let startMrzButton = document.getElementById('startMrzButton');
+        let captureMrzButton = document.getElementById('captureMrzButton');
+        let debugMrzImage = document.getElementById('debug-mrz-image');
 
-        async function startScanning() {
+        let mrzCanvas = document.createElement('canvas');
+        let mrzCtx = mrzCanvas.getContext('2d');
+        let mrzVideoStream = null;
+
+        async function startMRZScanning() {
             try {
-                resultText.innerText = "Accessing camera...";
-                
-                const constraints = {
-                    video: {
-                        facingMode: "environment",
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    }
-                };
-
-                videoStream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = videoStream;
-
-                video.onloadedmetadata = () => {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    resultText.innerText = "Camera ready. Position MRZ and tap 'Capture MRZ'";
-                    captureButton.disabled = false;
+                mrzResultText.innerText = "Accessing camera...";
+                const constraints = { video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } };
+                mrzVideoStream = await navigator.mediaDevices.getUserMedia(constraints);
+                mrzVideo.srcObject = mrzVideoStream;
+                mrzVideo.onloadedmetadata = () => {
+                    mrzCanvas.width = mrzVideo.videoWidth;
+                    mrzCanvas.height = mrzVideo.videoHeight;
+                    mrzResultText.innerText = "Camera ready. Position MRZ and tap 'Capture MRZ'";
+                    captureMrzButton.disabled = false;
                 };
             } catch (error) {
                 console.error("Error starting camera:", error);
-                resultText.innerText = "Camera access denied!";
+                mrzResultText.innerText = "Camera access denied!";
             }
         }
 
-        async function captureAndProcess() {
+        async function captureAndProcessMRZ() {
             try {
-                captureButton.disabled = true;
-                resultText.innerText = "Processing MRZ...";
+                captureMrzButton.disabled = true;
+                mrzResultText.innerText = "Processing MRZ...";
+                mrzCtx.drawImage(mrzVideo, 0, 0, mrzCanvas.width, mrzCanvas.height);
+                debugMrzImage.src = mrzCanvas.toDataURL();
+                debugMrzImage.style.display = "block";
 
-                // Draw video frame to canvas
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                // Extract MRZ region
-                const scanRect = scanRegion.getBoundingClientRect();
-                const videoRect = video.getBoundingClientRect();
-                
-                const relX = (scanRect.left - videoRect.left) / videoRect.width;
-                const relY = (scanRect.top - videoRect.top) / videoRect.height;
-                const relWidth = scanRect.width / videoRect.width;
-                const relHeight = scanRect.height / videoRect.height;
-
-                const cropX = relX * canvas.width;
-                const cropY = relY * canvas.height;
-                const cropWidth = relWidth * canvas.width;
-                const cropHeight = relHeight * canvas.height;
-
-                const croppedCanvas = document.createElement('canvas');
-                const croppedCtx = croppedCanvas.getContext('2d');
-                croppedCanvas.width = cropWidth;
-                croppedCanvas.height = cropHeight;
-                croppedCtx.drawImage(canvas, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-
-                // Show the processed image for debugging
-                debugImage.src = croppedCanvas.toDataURL();
-                debugImage.style.display = "block";
-
-                // Run OCR with Tesseract.js
-                const { data } = await Tesseract.recognize(croppedCanvas, 'eng', {
+                const { data } = await Tesseract.recognize(mrzCanvas, 'eng', {
                     tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
                     tessedit_pageseg_mode: 6
                 });
 
                 let mrzText = data.text.trim();
-                console.log("Raw MRZ OCR Result:", mrzText);
-
-                // ✅ Fix misread characters
-                mrzText = mrzText
-                    .replace(/L/g, '<')  // Replace misread 'L' with '<'
-                    .replace(/K/g, '<')  // Replace misread 'K' with '<'
-                    .replace(/\|/g, '<') // Replace misread '|'
-                    .replace(/\s+/g, ''); // Remove unnecessary spaces
-
-                console.log("Corrected MRZ Text:", mrzText);
-
+                mrzText = mrzText.replace(/L/g, '<').replace(/K/g, '<').replace(/\|/g, '<').replace(/\s+/g, '');
                 if (mrzText.length > 20 && mrzText.includes('<')) {
                     scanRegion.classList.add("detected");
-                    resultText.innerText = `MRZ Detected:\n${mrzText}`;
+                    mrzResultText.innerText = `MRZ Detected:\n${mrzText}`;
                 } else {
-                    resultText.innerText = "No valid MRZ detected. Please try again.";
+                    mrzResultText.innerText = "No valid MRZ detected. Please try again.";
                 }
             } catch (error) {
                 console.error("Error processing image:", error);
-                resultText.innerText = "Error processing image. Please try again.";
+                mrzResultText.innerText = "Error processing image. Please try again.";
             } finally {
-                captureButton.disabled = false;
+                captureMrzButton.disabled = false;
             }
         }
 
-        window.addEventListener('beforeunload', () => {
-            if (videoStream) {
-                videoStream.getTracks().forEach(track => track.stop());
+        // PDF417 Scanner
+        let pdf417Video = document.getElementById('pdf417-video');
+        let pdf417ResultText = document.getElementById('pdf417-result');
+        let startPdf417Button = document.getElementById('startPdf417Button');
+        let selectedDeviceId = null;
+        const pdf417Reader = new ZXing.BrowserMultiFormatReader();
+
+        async function startPDF417Scan() {
+            try {
+                startPdf417Button.disabled = true;
+                startPdf417Button.textContent = "Scanning...";
+                pdf417ResultText.innerText = "Looking for PDF417 barcode...";
+                
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                if (videoDevices.length > 1) {
+                    selectedDeviceId = videoDevices.find(device => device.label.toLowerCase().includes('back'))?.deviceId || videoDevices[0].deviceId;
+                } else if (videoDevices.length === 1) {
+                    selectedDeviceId = videoDevices[0].deviceId;
+                } else {
+                    pdf417ResultText.innerText = "No camera found!";
+                    startPdf417Button.disabled = false;
+                    return;
+                }
+
+                pdf417Reader.decodeFromInputVideoDevice(selectedDeviceId, pdf417Video, (result, err) => {
+                    if (result) {
+                        pdf417ResultText.innerText = "PDF417 Scanned: " + result.getText();
+                    }
+                });
+            } catch (error) {
+                console.error("Error starting scan:", error);
+                pdf417ResultText.innerText = "Camera access denied!";
+                startPdf417Button.disabled = false;
             }
-        });
+        }
     </script>
 
 </body>
