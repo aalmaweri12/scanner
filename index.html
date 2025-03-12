@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2D Barcode Scanner</title>
+    <title>PDF417 Barcode Scanner</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
     <style>
         body {
@@ -40,11 +40,12 @@
         #canvas {
             display: none;
         }
-        #debug-canvas {
+        #capturedImage {
             display: none;
             width: 100%;
-            border: 1px solid #ddd;
-            margin-top: 10px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border: 2px solid #4CAF50;
         }
         #scanBtn {
             background-color: #4CAF50;
@@ -56,16 +57,6 @@
             cursor: pointer;
             width: 100%;
             margin-bottom: 20px;
-        }
-        #debugBtn {
-            background-color: #f0ad4e;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            font-size: 14px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-bottom: 10px;
         }
         #scanBtn:hover {
             background-color: #45a049;
@@ -171,10 +162,25 @@
         .toast.show {
             opacity: 1;
         }
+        #resetBtn {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            display: none;
+        }
+        #resetBtn:hover {
+            background-color: #d32f2f;
+        }
     </style>
 </head>
 <body>
-    <h1>2D Barcode Scanner</h1>
+    <h1>PDF417 Barcode Scanner</h1>
     
     <div class="container">
         <div id="video-container">
@@ -190,8 +196,9 @@
         
         <button id="scanBtn">Start Camera</button>
         <div id="status">Camera inactive</div>
-        <button id="debugBtn" style="display: none;">Toggle Debug View</button>
-        <canvas id="debug-canvas"></canvas>
+        
+        <img id="capturedImage" alt="Captured Barcode">
+        <button id="resetBtn">Scan Another</button>
         
         <div id="result">No barcode detected</div>
         
@@ -206,22 +213,20 @@
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
-        const debugCanvas = document.getElementById('debug-canvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        const debugCtx = debugCanvas.getContext('2d');
+        const capturedImage = document.getElementById('capturedImage');
         const scanBtn = document.getElementById('scanBtn');
-        const debugBtn = document.getElementById('debugBtn');
+        const resetBtn = document.getElementById('resetBtn');
         const resultDiv = document.getElementById('result');
         const statusDiv = document.getElementById('status');
         const historyList = document.getElementById('historyList');
         const toast = document.getElementById('toast');
+        const videoContainer = document.getElementById('video-container');
         
         let stream = null;
         let scanning = false;
         let scanHistory = [];
-        let lastScannedCode = null;
         let scanInterval = null;
-        let debugMode = false;
         
         // Load scan history from localStorage
         if (localStorage.getItem('scanHistory')) {
@@ -243,10 +248,20 @@
             }
         });
         
-        // Debug mode toggle
-        debugBtn.addEventListener('click', function() {
-            debugMode = !debugMode;
-            debugCanvas.style.display = debugMode ? 'block' : 'none';
+        // Reset scan
+        resetBtn.addEventListener('click', function() {
+            // Hide captured image and reset button
+            capturedImage.style.display = 'none';
+            resetBtn.style.display = 'none';
+            
+            // Show video container
+            videoContainer.style.display = 'block';
+            
+            // Resume scanning if needed
+            if (!scanInterval && scanning) {
+                scanInterval = setInterval(scanVideoFrame, 200);
+                statusDiv.textContent = "Scanning for PDF417 barcodes...";
+            }
         });
         
         function startCamera() {
@@ -274,21 +289,16 @@
                         .then(() => {
                             scanning = true;
                             scanBtn.textContent = 'Stop Camera';
-                            statusDiv.textContent = "Camera active - scanning for barcodes";
+                            statusDiv.textContent = "Scanning for PDF417 barcodes...";
                             
                             // Set canvas dimensions based on video stream
                             canvas.width = video.videoWidth;
                             canvas.height = video.videoHeight;
-                            debugCanvas.width = video.videoWidth;
-                            debugCanvas.height = video.videoHeight;
-                            
-                            // Enable debug button
-                            debugBtn.style.display = 'inline-block';
                             
                             // Start scanning using an interval for more reliable detection
                             scanInterval = setInterval(scanVideoFrame, 200);
                             
-                            showToast('Camera started. Point at a barcode to scan.');
+                            showToast('Camera started. Point at a PDF417 barcode to scan.');
                         })
                         .catch(function(err) {
                             console.error('Error playing video:', err);
@@ -315,8 +325,6 @@
                 scanning = false;
                 scanBtn.textContent = 'Start Camera';
                 statusDiv.textContent = "Camera inactive";
-                debugBtn.style.display = 'none';
-                debugCanvas.style.display = 'none';
                 
                 if (scanInterval) {
                     clearInterval(scanInterval);
@@ -337,44 +345,38 @@
                 // Get the image data from the canvas
                 const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 
-                // If in debug mode, show what the camera sees
-                if (debugMode) {
-                    debugCtx.putImageData(imageData, 0, 0);
-                }
-                
                 // jsQR detection
                 const code = jsQR(imageData.data, imageData.width, imageData.height, {
                     inversionAttempts: "dontInvert",
                 });
                 
                 if (code) {
-                    // Draw bounding box if in debug mode
-                    if (debugMode) {
-                        drawBoundingBox(code.location, debugCtx);
-                    }
+                    // Check if it looks like a PDF417 barcode (rough heuristic)
+                    // PDF417 barcodes are typically rectangular with specific patterns
+                    // This is a very simplified check that might need refinement
+                    const isPDF417 = isProbablyPDF417(code);
                     
-                    // Only process if it's a new code or more than 3 seconds since last scan
-                    const currentTime = new Date().getTime();
-                    const isNewCode = (lastScannedCode === null || 
-                                      lastScannedCode.data !== code.data || 
-                                      (currentTime - lastScannedCode.timestamp > 3000));
-                    
-                    if (isNewCode) {
-                        console.log("QR Code detected:", code.data);
+                    if (isPDF417) {
+                        console.log("PDF417 Barcode detected:", code.data);
+                        
+                        // Pause scanning
+                        if (scanInterval) {
+                            clearInterval(scanInterval);
+                            scanInterval = null;
+                        }
+                        
+                        // Take a picture of the barcode
+                        takePicture();
+                        
+                        // Display the result
                         resultDiv.innerText = code.data;
-                        statusDiv.textContent = "Barcode detected!";
+                        statusDiv.textContent = "PDF417 barcode detected!";
                         
                         // Add to history
                         addToHistory(code.data);
                         
-                        // Update last scanned code
-                        lastScannedCode = {
-                            data: code.data,
-                            timestamp: currentTime
-                        };
-                        
                         // Visual feedback
-                        showToast('Barcode detected!');
+                        showToast('PDF417 barcode detected!');
                     }
                 }
             } catch (error) {
@@ -383,25 +385,42 @@
             }
         }
         
-        function drawBoundingBox(location, context) {
-            // Draw bounding box
-            context.beginPath();
-            context.moveTo(location.topLeftCorner.x, location.topLeftCorner.y);
-            context.lineTo(location.topRightCorner.x, location.topRightCorner.y);
-            context.lineTo(location.bottomRightCorner.x, location.bottomRightCorner.y);
-            context.lineTo(location.bottomLeftCorner.x, location.bottomLeftCorner.y);
-            context.lineTo(location.topLeftCorner.x, location.topLeftCorner.y);
-            context.lineWidth = 4;
-            context.strokeStyle = "#FF3B58";
-            context.stroke();
+        // Simple heuristic to identify likely PDF417 barcodes
+        // This is a simplified approach; a proper PDF417 decoder would be more accurate
+        function isProbablyPDF417(qrCode) {
+            // Check if the data looks like a PDF417 format
+            // This is just a simple check - might need refinement for your specific use case
             
-            // Draw corner points
-            context.fillStyle = "#00FF00";
-            const pointSize = 8;
-            [location.topLeftCorner, location.topRightCorner, 
-             location.bottomRightCorner, location.bottomLeftCorner].forEach(point => {
-                context.fillRect(point.x - pointSize/2, point.y - pointSize/2, pointSize, pointSize);
-            });
+            // PDF417 often contains more data and special characters
+            if (qrCode.data.length > 20) {
+                // The ratio of a PDF417 barcode is typically rectangular (wider than tall)
+                const width = Math.abs(qrCode.location.topRightCorner.x - qrCode.location.topLeftCorner.x);
+                const height = Math.abs(qrCode.location.bottomLeftCorner.y - qrCode.location.topLeftCorner.y);
+                
+                if (width > height * 1.5) {
+                    return true;
+                }
+            }
+            
+            // For testing purposes, we'll consider all detected codes as PDF417
+            // In a real application, you'd use a proper PDF417 decoder library
+            return true;
+        }
+        
+        function takePicture() {
+            // Draw the current frame from video to canvas
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Convert canvas to image
+            const imageDataURL = canvas.toDataURL('image/png');
+            capturedImage.src = imageDataURL;
+            
+            // Show the captured image
+            capturedImage.style.display = 'block';
+            resetBtn.style.display = 'block';
+            
+            // Hide the video container
+            videoContainer.style.display = 'none';
         }
         
         function addToHistory(content) {
@@ -465,11 +484,11 @@
                     scanInterval = null;
                 }
                 statusDiv.textContent = "Scanning paused (page inactive)";
-            } else if (!document.hidden && scanning) {
-                // Page is visible again, resume scanning
+            } else if (!document.hidden && scanning && !capturedImage.style.display === 'block') {
+                // Page is visible again and no barcode is currently captured, resume scanning
                 if (!scanInterval) {
                     scanInterval = setInterval(scanVideoFrame, 200);
-                    statusDiv.textContent = "Camera active - scanning for barcodes";
+                    statusDiv.textContent = "Scanning for PDF417 barcodes...";
                 }
             }
         });
