@@ -1,62 +1,320 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF417 Scanner</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/barkoder-sdk@latest"></script>
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-        video { width: 100%; max-width: 600px; border: 2px solid #333; }
-        #result { margin-top: 20px; font-size: 18px; font-weight: bold; white-space: pre-line; }
-        button { padding: 10px 20px; font-size: 16px; margin-top: 10px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF417 ID Scanner</title>
+  
+  <!-- React and ReactDOM from CDN -->
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  
+  <!-- Babel for JSX support -->
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.5/babel.min.js"></script>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+  
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: #f3f4f6;
+      margin: 0;
+      padding: 16px;
+    }
+    
+    .scanner-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .scanner-target {
+      width: 80%;
+      height: 33%;
+      border: 2px solid #10b981;
+      border-radius: 8px;
+      box-shadow: 0 0 0 5000px rgba(0, 0, 0, 0.3);
+    }
+    
+    .scan-line {
+      position: absolute;
+      height: 2px;
+      width: 80%;
+      background: linear-gradient(90deg, transparent, #10b981 20%, #10b981 80%, transparent);
+      animation: scan 2s linear infinite;
+    }
+    
+    @keyframes scan {
+      0% {
+        top: 33%;
+      }
+      50% {
+        top: 66%;
+      }
+      100% {
+        top: 33%;
+      }
+    }
+
+    .hidden-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+    }
+  </style>
 </head>
 <body>
-    <div id="app">
-        <h2>PDF417 Scanner</h2>
-        <video id="video" autoplay></video>
-        <button @click="startScan">Start Scan</button>
-        <p id="result">{{ resultText }}</p>
-    </div>
+  <div id="app"></div>
+  
+  <script type="text/babel">
+    const { useState, useRef, useEffect } = React;
+    
+    const PDF417Scanner = () => {
+      const videoRef = useRef(null);
+      const canvasRef = useRef(null);
+      const [scanning, setScanning] = useState(false);
+      const [result, setResult] = useState(null);
+      const [error, setError] = useState(null);
+      const [cameras, setCameras] = useState([]);
+      const [selectedCamera, setSelectedCamera] = useState('');
+      const [scannerReady, setScannerReady] = useState(false);
 
-    <script>
-        const { createApp, ref } = Vue;
-
-        createApp({
-            setup() {
-                const resultText = ref("Scan a PDF417 barcode...");
-                let Barkoder;
-
-                async function startScan() {
-                    try {
-                        // Ensure camera permission is granted
-                        const constraints = {
-                            video: { facingMode: { exact: "environment" } } // Use back camera
-                        };
-                        await navigator.mediaDevices.getUserMedia(constraints);
-
-                        // Initialize Barkoder SDK
-                        Barkoder = await BarkoderSDK.initialize("YOUR_LICENSE_KEY"); // Replace with actual license key
-                        Barkoder.setCameraResolution(1); // Set resolution to high
-                        Barkoder.setEnabledDecoders(BarkoderSDK.constants.BarcodeTypes.PDF417); // Only PDF417
-
-                        // Start scanning
-                        Barkoder.startScanner(result => {
-                            resultText.value = `Raw Data:\n${result.textualData}`;
-                            Barkoder.stopScanner(); // Stop after one scan
-                        });
-
-                    } catch (error) {
-                        console.error("Error:", error);
-                        resultText.value = "Error accessing camera!";
-                    }
-                }
-
-                return { startScan, resultText };
+      // Get available cameras
+      useEffect(() => {
+        const getCameras = async () => {
+          try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            setCameras(videoDevices);
+            if (videoDevices.length > 0) {
+              setSelectedCamera(videoDevices[videoDevices.length - 1].deviceId); // Default to last camera (likely back camera on mobile)
             }
-        }).mount("#app");
-    </script>
+          } catch (err) {
+            setError('Error accessing camera devices: ' + err.message);
+          }
+        };
+        
+        getCameras();
+      }, []);
+
+      // Start camera stream
+      const startScanning = async () => {
+        setError(null);
+        setResult(null);
+        
+        try {
+          const constraints = {
+            video: {
+              deviceId: selectedCamera ? { exact: selectedCamera } : undefined,
+              facingMode: "environment",
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            }
+          };
+          
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.onloadedmetadata = () => {
+              videoRef.current.play();
+              setScanning(true);
+              captureFrames();
+              setScannerReady(true);
+            };
+          }
+        } catch (err) {
+          setError('Error accessing camera: ' + err.message);
+        }
+      };
+
+      // Stop camera stream
+      const stopScanning = () => {
+        if (videoRef.current && videoRef.current.srcObject) {
+          const tracks = videoRef.current.srcObject.getTracks();
+          tracks.forEach(track => track.stop());
+          setScanning(false);
+          setScannerReady(false);
+        }
+      };
+
+      // Process frames to detect PDF417 barcode
+      const captureFrames = () => {
+        const processFrame = () => {
+          if (!scanning || !videoRef.current || !canvasRef.current) return;
+
+          const canvas = canvasRef.current;
+          const context = canvas.getContext('2d');
+          const video = videoRef.current;
+
+          if (video.readyState === video.HAVE_ENOUGH_DATA) {
+            // Set canvas dimensions to match video
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            // Draw video frame to canvas
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Here we would typically integrate with a barcode scanning library
+            // For demonstration, we'll simulate finding a barcode after 3 seconds
+          }
+          
+          // Continue processing frames
+          if (scanning) {
+            requestAnimationFrame(processFrame);
+          }
+        };
+
+        // Start processing frames
+        requestAnimationFrame(processFrame);
+        
+        // For demo purposes only: simulate a successful scan after 3 seconds
+        setTimeout(() => {
+          if (scanning) {
+            const mockData = {
+              format: "PDF417",
+              rawData: "ANSI 636032100102DL00410246ZM0287000BDLDAQ 458 029 004",
+              fields: [
+                { type: "DL_NUMBER", value: "458 029 004" },
+                { type: "EXPIRATION_DATE", value: "2026-09-15" },
+                { type: "ISSUE_DATE", value: "2022-09-15" },
+                { type: "DATE_OF_BIRTH", value: "1985-03-22" },
+                { type: "FIRST_NAME", value: "SAMPLE" },
+                { type: "LAST_NAME", value: "PERSON" }
+              ]
+            };
+            setResult(mockData);
+            stopScanning();
+          }
+        }, 3000);
+      };
+
+      // Handle camera change
+      const handleCameraChange = (e) => {
+        setSelectedCamera(e.target.value);
+        if (scanning) {
+          stopScanning();
+          setTimeout(startScanning, 500);
+        }
+      };
+
+      return (
+        <div className="max-w-lg mx-auto bg-white p-4 rounded-lg shadow-md">
+          <h1 className="text-2xl font-bold mb-4 text-center">PDF417 ID Scanner</h1>
+          
+          {error && (
+            <div className="w-full bg-red-100 text-red-700 p-3 rounded mb-4">
+              {error}
+            </div>
+          )}
+          
+          <div className="w-full relative mb-4 bg-black rounded-lg overflow-hidden" style={{ height: "300px" }}>
+            <video 
+              ref={videoRef} 
+              className="w-full h-full object-cover"
+              playsInline
+              muted
+            />
+            <canvas 
+              ref={canvasRef} 
+              className="hidden-canvas"
+            />
+            
+            {scannerReady && (
+              <div className="scanner-overlay">
+                <div className="scanner-target"></div>
+                <div className="scan-line"></div>
+              </div>
+            )}
+          </div>
+          
+          <div className="w-full flex flex-col sm:flex-row gap-3 mb-6">
+            <select 
+              className="flex-grow p-2 border border-gray-300 rounded"
+              value={selectedCamera}
+              onChange={handleCameraChange}
+              disabled={scanning}
+            >
+              {cameras.map(camera => (
+                <option key={camera.deviceId} value={camera.deviceId}>
+                  {camera.label || `Camera ${cameras.indexOf(camera) + 1}`}
+                </option>
+              ))}
+            </select>
+            
+            {!scanning ? (
+              <button
+                className="sm:flex-shrink-0 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-6 rounded"
+                onClick={startScanning}
+              >
+                Start Scanning
+              </button>
+            ) : (
+              <button
+                className="sm:flex-shrink-0 bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-6 rounded"
+                onClick={stopScanning}
+              >
+                Stop Scanning
+              </button>
+            )}
+          </div>
+          
+          {result && (
+            <div className="w-full bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <h2 className="text-xl font-semibold mb-3">Scan Results</h2>
+              <div className="space-y-2">
+                <p><span className="font-medium">Format:</span> {result.format}</p>
+                <p><span className="font-medium">Raw Data:</span> <span className="text-xs break-all">{result.rawData}</span></p>
+                
+                <div className="mt-4">
+                  <h3 className="font-medium mb-2">Parsed Fields:</h3>
+                  <div className="bg-white p-3 rounded border border-gray-200">
+                    {result.fields.map((field, index) => (
+                      <div key={index} className="mb-1">
+                        <span className="font-medium">{field.type}:</span> {field.value}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              <button
+                className="mt-4 w-full bg-gray-800 hover:bg-gray-900 text-white font-medium py-2 px-4 rounded"
+                onClick={() => {
+                  setResult(null);
+                  setScanning(false);
+                }}
+              >
+                Clear Results
+              </button>
+            </div>
+          )}
+          
+          <div className="w-full mt-6 text-sm text-gray-600">
+            <p className="mb-2"><strong>Note:</strong> This demo automatically simulates a successful scan after 3 seconds.</p>
+            <p>For a production implementation, you would need to integrate a PDF417 barcode scanning library like:</p>
+            <ul className="list-disc ml-5 space-y-1 mt-2">
+              <li>ZXing (Zebra Crossing)</li>
+              <li>Dynamsoft Barcode Reader</li>
+              <li>QuaggaJS</li>
+              <li>Commercial SDKs like Scandit or Barkoder</li>
+            </ul>
+          </div>
+        </div>
+      );
+    };
+
+    // Render the app
+    ReactDOM.render(<PDF417Scanner />, document.getElementById('app'));
+  </script>
 </body>
 </html>
