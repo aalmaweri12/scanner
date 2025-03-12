@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple PDF417 Scanner</title>
+    <title>PDF417 Scanner</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/barkoder-sdk@latest"></script>
     <style>
@@ -18,7 +18,7 @@
         <h2>PDF417 Scanner</h2>
         <video id="video" autoplay></video>
         <button @click="startScan">Start Scan</button>
-        <p id="result">Scan a PDF417 barcode...</p>
+        <p id="result">{{ resultText }}</p>
     </div>
 
     <script>
@@ -31,17 +31,26 @@
 
                 async function startScan() {
                     try {
-                        Barkoder = await BarkoderSDK.initialize("YOUR_LICENSE_KEY"); // Replace with your Barkoder SDK key
+                        // Ensure camera permission is granted
+                        const constraints = {
+                            video: { facingMode: { exact: "environment" } } // Use back camera
+                        };
+                        await navigator.mediaDevices.getUserMedia(constraints);
+
+                        // Initialize Barkoder SDK
+                        Barkoder = await BarkoderSDK.initialize("YOUR_LICENSE_KEY"); // Replace with actual license key
                         Barkoder.setCameraResolution(1); // Set resolution to high
-                        Barkoder.setEnabledDecoders(BarkoderSDK.constants.BarcodeTypes.PDF417); // Only allow PDF417
-                        
+                        Barkoder.setEnabledDecoders(BarkoderSDK.constants.BarcodeTypes.PDF417); // Only PDF417
+
+                        // Start scanning
                         Barkoder.startScanner(result => {
                             resultText.value = `Raw Data:\n${result.textualData}`;
-                            Barkoder.stopScanner(); // Stop scanning after first scan
+                            Barkoder.stopScanner(); // Stop after one scan
                         });
+
                     } catch (error) {
                         console.error("Error:", error);
-                        resultText.value = "Error starting scanner!";
+                        resultText.value = "Error accessing camera!";
                     }
                 }
 
