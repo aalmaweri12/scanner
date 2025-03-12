@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fixed MRZ Scanner</title>
+    <title>Optimized MRZ Scanner</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 20px; background-color: #f5f5f5; }
@@ -24,7 +24,7 @@
 </head>
 <body>
 
-    <h2>Fixed MRZ Scanner</h2>
+    <h2>Optimized MRZ Scanner</h2>
     <p>Align the MRZ within the scanning area and click "Capture MRZ"</p>
 
     <div class="video-container">
@@ -117,8 +117,17 @@
                     tessedit_pageseg_mode: 6
                 });
 
-                const mrzText = data.text.trim();
-                console.log("MRZ OCR Result:", mrzText);
+                let mrzText = data.text.trim();
+                console.log("Raw MRZ OCR Result:", mrzText);
+
+                // ✅ Fix misread characters
+                mrzText = mrzText
+                    .replace(/L/g, '<')  // Replace misread 'L' with '<'
+                    .replace(/K/g, '<')  // Replace misread 'K' with '<'
+                    .replace(/\|/g, '<') // Replace misread '|'
+                    .replace(/\s+/g, ''); // Remove unnecessary spaces
+
+                console.log("Corrected MRZ Text:", mrzText);
 
                 if (mrzText.length > 20 && mrzText.includes('<')) {
                     scanRegion.classList.add("detected");
