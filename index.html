@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MRZ Scanner</title>
-    <script src="https://unpkg.com/@zxing/library@latest"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/2.1.5/tesseract.min.js"></script>
+    <title>Enhanced MRZ Scanner</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
     <style>
         body { 
             font-family: Arial, sans-serif; 
@@ -25,13 +24,16 @@
             border: 2px solid #333; 
             display: block;
         }
+        canvas {
+            display: none;
+        }
         #scan-region {
             position: absolute;
-            bottom: 20%;
+            bottom: 15%;
             left: 50%;
             transform: translateX(-50%);
-            width: 90%;
-            height: 25%;
+            width: 92%;
+            height: 20%;
             border: 3px solid red;
             box-sizing: border-box;
             transition: border-color 0.3s ease;
@@ -61,10 +63,16 @@
             text-align: left;
             display: none;
         }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
         button { 
             padding: 12px 24px; 
             font-size: 16px; 
-            margin-top: 15px;
             background-color: #4285f4;
             color: white;
             border: none;
@@ -98,23 +106,59 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .settings {
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .settings select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        #debug-image {
+            max-width: 100%;
+            margin-top: 10px;
+            display: none;
+        }
     </style>
 </head>
 <body>
 
-    <h2>MRZ Document Scanner</h2>
-    <p class="status">Position the MRZ area (bottom of passport/ID) within the scanning region</p>
+    <h2>Enhanced MRZ Document Scanner</h2>
+    <p class="status">Position the MRZ text lines within the scanning region</p>
     
     <div class="video-container">
         <video id="video" autoplay playsinline></video>
         <div id="scan-region"></div>
     </div>
     
+    <div class="settings">
+        <select id="documentType">
+            <option value="passport">Passport</option>
+            <option value="greencard" selected>Green Card/I-551</option>
+            <option value="id">ID Card</option>
+        </select>
+        <select id="preprocessing">
+            <option value="none">No Preprocessing</option>
+            <option value="threshold" selected>Threshold</option>
+            <option value="contrast">High Contrast</option>
+        </select>
+    </div>
+    
     <div id="loading" class="loading"></div>
-    <button id="startButton" onclick="startScanning()">Start Scan</button>
-    <button id="captureButton" onclick="captureAndProcess()" disabled>Capture MRZ</button>
+    
+    <div class="controls">
+        <button id="startButton" onclick="startScanning()">Start Camera</button>
+        <button id="captureButton" onclick="captureAndProcess()" disabled>Capture MRZ</button>
+        <button id="debugButton" onclick="toggleDebug()" disabled>Show Debug</button>
+    </div>
+    
     <p id="result">Scan the Machine Readable Zone (MRZ)...</p>
     <div id="mrz-data"></div>
+    <img id="debug-image" alt="Processed Image" />
 
     <script>
         let video = document.getElementById('video');
@@ -123,26 +167,31 @@
         let scanRegion = document.getElementById('scan-region');
         let startButton = document.getElementById('startButton');
         let captureButton = document.getElementById('captureButton');
+        let debugButton = document.getElementById('debugButton');
         let loadingIndicator = document.getElementById('loading');
+        let debugImage = document.getElementById('debug-image');
+        let documentTypeSelect = document.getElementById('documentType');
+        let preprocessingSelect = document.getElementById('preprocessing');
+        
         let selectedDeviceId = null;
         let scanning = false;
         let canvas = document.createElement('canvas');
         let ctx = canvas.getContext('2d');
         let videoStream = null;
+        let debugMode = false;
         
         // Initialize Tesseract worker
-        const worker = Tesseract.createWorker({
-            logger: message => {
-                if (message.status === 'recognizing text') {
-                    resultText.innerText = `Processing: ${Math.floor(message.progress * 100)}%`;
-                }
-            }
-        });
+        let worker = null;
         
         async function initTesseract() {
-            await worker.load();
-            await worker.loadLanguage('eng');
-            await worker.initialize('eng');
+            worker = await Tesseract.createWorker('eng', 1, {
+                logger: message => {
+                    if (message.status === 'recognizing text') {
+                        resultText.innerText = `Processing: ${Math.floor(message.progress * 100)}%`;
+                    }
+                }
+            });
+            
             // Set parameters optimized for MRZ
             await worker.setParameters({
                 tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
@@ -204,6 +253,7 @@
                     startButton.disabled = false;
                     startButton.textContent = "Stop Camera";
                     captureButton.disabled = false;
+                    debugButton.disabled = false;
                     resultText.innerText = "Camera ready. Position MRZ in the scanning area and tap 'Capture MRZ'";
                 };
             } catch (error) {
@@ -220,9 +270,77 @@
                 video.srcObject = null;
             }
             scanning = false;
-            startButton.textContent = "Start Scan";
+            startButton.textContent = "Start Camera";
             captureButton.disabled = true;
+            debugButton.disabled = true;
             scanRegion.classList.remove("detected");
+        }
+        
+        function toggleDebug() {
+            debugMode = !debugMode;
+            debugImage.style.display = debugMode ? 'block' : 'none';
+            debugButton.textContent = debugMode ? 'Hide Debug' : 'Show Debug';
+        }
+        
+        function preprocessImage(imageData, method) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = imageData.width;
+            canvas.height = imageData.height;
+            ctx.putImageData(imageData, 0, 0);
+            
+            // Create a new canvas for the processed image
+            const processedCanvas = document.createElement('canvas');
+            const processedCtx = processedCanvas.getContext('2d');
+            processedCanvas.width = imageData.width;
+            processedCanvas.height = imageData.height;
+            
+            // Draw the original image to the new canvas
+            processedCtx.drawImage(canvas, 0, 0);
+            
+            // Get the image data from the new canvas
+            const processedImageData = processedCtx.getImageData(0, 0, processedCanvas.width, processedCanvas.height);
+            const data = processedImageData.data;
+            
+            switch(method) {
+                case 'threshold':
+                    // Apply threshold to make text more visible
+                    const threshold = 100;
+                    for (let i = 0; i < data.length; i += 4) {
+                        // Convert to grayscale
+                        const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                        // Apply threshold
+                        const value = avg < threshold ? 0 : 255;
+                        data[i] = data[i + 1] = data[i + 2] = value;
+                    }
+                    break;
+                case 'contrast':
+                    // Increase contrast
+                    const factor = 1.5; // Contrast factor
+                    for (let i = 0; i < data.length; i += 4) {
+                        // Apply to each channel
+                        for (let j = 0; j < 3; j++) {
+                            const channel = data[i + j];
+                            // Normalize to [-0.5, 0.5], apply contrast, then rescale
+                            data[i + j] = Math.min(255, Math.max(0, ((channel / 255 - 0.5) * factor + 0.5) * 255));
+                        }
+                    }
+                    break;
+                case 'none':
+                default:
+                    // No preprocessing
+                    break;
+            }
+            
+            // Put the processed image data back to the canvas
+            processedCtx.putImageData(processedImageData, 0, 0);
+            
+            // If debug mode is on, show the processed image
+            if (debugMode) {
+                debugImage.src = processedCanvas.toDataURL();
+            }
+            
+            return processedCanvas;
         }
         
         async function captureAndProcess() {
@@ -232,6 +350,7 @@
                 captureButton.disabled = true;
                 loadingIndicator.style.display = 'block';
                 resultText.innerText = "Processing MRZ...";
+                scanRegion.classList.remove("detected");
                 
                 // Draw video frame to canvas
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -263,21 +382,35 @@
                     0, 0, cropWidth, cropHeight
                 );
                 
-                // Recognize text in the cropped area
-                const { data } = await worker.recognize(croppedCanvas);
+                // Get image data for preprocessing
+                const imageData = croppedCtx.getImageData(0, 0, croppedCanvas.width, croppedCanvas.height);
+                const preprocessedCanvas = preprocessImage(imageData, preprocessingSelect.value);
+                
+                // Recognize text in the processed area
+                const { data } = await worker.recognize(preprocessedCanvas);
                 
                 // Process and display MRZ data
-                const mrzText = data.text.replace(/\s+/g, '');
-                const isMRZ = validateMRZ(mrzText);
+                const mrzText = data.text.trim();
+                console.log("Raw OCR result:", mrzText);
+                
+                const documentType = documentTypeSelect.value;
+                const isMRZ = validateMRZ(mrzText, documentType);
                 
                 if (isMRZ) {
                     scanRegion.classList.add("detected");
                     resultText.innerText = "MRZ Detected!";
-                    parseMRZ(mrzText);
+                    parseMRZ(mrzText, documentType);
                 } else {
-                    scanRegion.classList.remove("detected");
                     resultText.innerText = "No valid MRZ detected. Please try again.";
                     mrzDataDisplay.style.display = 'none';
+                    
+                    if (debugMode) {
+                        mrzDataDisplay.style.display = 'block';
+                        mrzDataDisplay.innerHTML = `
+                            <strong>Raw OCR Text:</strong><br>
+                            <code>${mrzText.replace(/\n/g, '<br>')}</code>
+                        `;
+                    }
                 }
             } catch (error) {
                 console.error("Error processing image:", error);
@@ -288,67 +421,175 @@
             }
         }
         
-        function validateMRZ(text) {
+        function validateMRZ(text, documentType) {
+            // Remove extra spaces and normalize line breaks
+            const cleanedText = text.replace(/\s+/g, ' ').trim();
+            
+            // Custom validation for Green Card
+            if (documentType === 'greencard') {
+                // Looking for the pattern C1USA... or similar patterns found on Green Cards
+                return cleanedText.includes('USA') && 
+                      (cleanedText.includes('C1') || cleanedText.includes('C2') || 
+                       cleanedText.includes('IR') || cleanedText.includes('CR')) &&
+                      /[A-Z][0-9]/.test(cleanedText) && // Check for letter-number pattern
+                      cleanedText.includes('<');  // MRZ usually contains < characters
+            }
+            
+            // Standard passport/ID validation
             // Basic validation of MRZ structure
-            // MRZ typically has 2 or 3 lines and starts with specific characters
-            // This is a simplified validation
             return (
                 text.length >= 30 && 
                 (text.includes('P<') || text.includes('ID<') || text.includes('TD<'))
             );
         }
         
-        function parseMRZ(mrzText) {
+        function parseMRZ(mrzText, documentType) {
             mrzDataDisplay.style.display = 'block';
             
-            // Format raw MRZ
-            let formattedMRZ = '';
-            if (mrzText.length >= 88) { // TD3 (Passport, 2 lines of 44 chars)
-                formattedMRZ = mrzText.substring(0, 44) + '\n' + mrzText.substring(44, 88);
-            } else if (mrzText.length >= 72) { // TD2 (2 lines of 36 chars)
-                formattedMRZ = mrzText.substring(0, 36) + '\n' + mrzText.substring(36, 72);
-            } else if (mrzText.length >= 90) { // TD1 (3 lines of 30 chars)
-                formattedMRZ = mrzText.substring(0, 30) + '\n' + mrzText.substring(30, 60) + '\n' + mrzText.substring(60, 90);
-            } else {
-                formattedMRZ = mrzText;
-            }
+            // Clean the text - remove extra spaces and normalize
+            const lines = mrzText.split(/[\r\n]+/).filter(line => line.trim().length > 0);
+            const cleanedLines = lines.map(line => line.replace(/\s+/g, ''));
             
-            // Extract information from MRZ (basic extraction)
+            // Format raw MRZ
+            let formattedMRZ = cleanedLines.join('\n');
+            
+            // Initialize information object
             let info = {
                 documentType: 'Unknown',
                 issuingCountry: 'Unknown',
+                documentNumber: 'Unknown',
                 surname: 'Unknown',
                 givenNames: 'Unknown',
-                documentNumber: 'Unknown',
                 nationality: 'Unknown',
                 birthDate: 'Unknown',
                 gender: 'Unknown',
                 expiryDate: 'Unknown'
             };
             
-            // Try to extract data based on MRZ type
+            // Parse based on document type
             try {
-                if (mrzText.length >= 88) { // TD3 passport
-                    info.documentType = mrzText.substring(0, 1);
-                    info.issuingCountry = mrzText.substring(2, 5);
+                if (documentType === 'greencard') {
+                    // Green Card MRZ parsing - based on Format: C1USAxxxxxxxx...
+                    // First line example: C1USA1234567897MSC0000000110<<
+                    // Second line example: 02102003F3210260MEX<<<<<<<<<<4
                     
-                    // Extract name (surname and given names are separated by '<<')
-                    const namePart = mrzText.substring(5, 44).replace(/</g, ' ').trim();
-                    const nameParts = namePart.split('  ');
-                    info.surname = nameParts[0];
-                    info.givenNames = nameParts[1] || '';
+                    // Find the line that starts with C1USA or similar pattern
+                    const cardLine = cleanedLines.find(line => 
+                        line.match(/[A-Z][0-9][A-Z]{3}/)) || '';
                     
-                    info.documentNumber = mrzText.substring(44, 53).replace(/</g, '');
-                    info.nationality = mrzText.substring(54, 57);
+                    if (cardLine) {
+                        info.documentType = 'Permanent Resident Card (Green Card)';
+                        info.issuingCountry = 'USA';
+                        
+                        // Try to extract document number
+                        const docMatch = cardLine.match(/[A-Z][0-9][A-Z]{3}([0-9]+)/);
+                        if (docMatch && docMatch[1]) {
+                            info.documentNumber = docMatch[1];
+                        }
+                        
+                        // Find the line that might have date information
+                        const dateLine = cleanedLines.find(line => line.match(/[0-9]{6}[FM]/)) || '';
+                        
+                        if (dateLine) {
+                            // Try to extract birth date (format often YYMMDD)
+                            const dateMatch = dateLine.match(/([0-9]{6})[FM]/);
+                            if (dateMatch && dateMatch[1]) {
+                                const dateStr = dateMatch[1];
+                                info.birthDate = `${dateStr.substring(4, 6)}/${dateStr.substring(2, 4)}/${dateStr.substring(0, 2)}`;
+                            }
+                            
+                            // Gender
+                            const genderMatch = dateLine.match(/[0-9]{6}([FM])/);
+                            if (genderMatch && genderMatch[1]) {
+                                info.gender = genderMatch[1] === 'M' ? 'Male' : 'Female';
+                            }
+                            
+                            // Nationality - often near the end of the line followed by <
+                            const natMatch = dateLine.match(/([A-Z]{3})<+/);
+                            if (natMatch && natMatch[1]) {
+                                info.nationality = natMatch[1];
+                            }
+                        }
+                    }
                     
-                    // Format dates (YYMMDD)
-                    const birthDateStr = mrzText.substring(57, 63);
-                    info.birthDate = `${birthDateStr.substring(4, 6)}/${birthDateStr.substring(2, 4)}/${birthDateStr.substring(0, 2)}`;
-                    
-                    info.gender = mrzText.substring(64, 65);
-                    
-                    const expiryDateStr = mrzText.substring(65, 71);
-                    info.expiryDate = `${expiryDateStr.substring(4, 6)}/${expiryDateStr.substring(2, 4)}/${expiryDateStr.substring(0, 2)}`;
+                    // Look for line with "SPECIMEN" or name
+                    const nameLine = cleanedLines.find(line => line.includes('SPECIMEN')) || '';
+                    if (nameLine) {
+                        // Extract test data if present
+                        const nameMatch = nameLine.match(/SPECIMEN<<([A-Z]+)</);
+                        if (nameMatch && nameMatch[1]) {
+                            info.surname = nameMatch[1];
+                            info.givenNames = 'TEST';
+                        }
+                    }
+                } else if (documentType === 'passport') {
+                    // Standard passport parsing
+                    if (cleanedLines.length >= 2) {
+                        // First line of passport MRZ contains document type, issuing country, and name
+                        const line1 = cleanedLines[0];
+                        if (line1.length >= 44) {
+                            info.documentType = 'Passport';
+                            info.issuingCountry = line1.substring(2, 5);
+                            
+                            // Extract name (surname and given names are separated by '<<')
+                            const namePart = line1.substring(5).replace(/</g, ' ').trim();
+                            const nameParts = namePart.split('  ');
+                            if (nameParts.length >= 1) {
+                                info.surname = nameParts[0];
+                                info.givenNames = nameParts[1] || '';
+                            }
+                        }
+                        
+                        // Second line contains document number, nationality, birth date, gender, and expiry date
+                        const line2 = cleanedLines[1];
+                        if (line2.length >= 44) {
+                            info.documentNumber = line2.substring(0, 9).replace(/</g, '');
+                            info.nationality = line2.substring(10, 13);
+                            
+                            // Format dates (YYMMDD)
+                            const birthDateStr = line2.substring(13, 19);
+                            info.birthDate = `${birthDateStr.substring(4, 6)}/${birthDateStr.substring(2, 4)}/${birthDateStr.substring(0, 2)}`;
+                            
+                            info.gender = line2.substring(20, 21);
+                            
+                            const expiryDateStr = line2.substring(21, 27);
+                            info.expiryDate = `${expiryDateStr.substring(4, 6)}/${expiryDateStr.substring(2, 4)}/${expiryDateStr.substring(0, 2)}`;
+                        }
+                    }
+                } else if (documentType === 'id') {
+                    // ID Card MRZ parsing - similar to passport but with different layouts
+                    if (cleanedLines.length >= 2) {
+                        const line1 = cleanedLines[0];
+                        if (line1.length >= 30) {
+                            info.documentType = 'ID Card';
+                            info.issuingCountry = line1.substring(2, 5);
+                            info.documentNumber = line1.substring(5, 14).replace(/</g, '');
+                        }
+                        
+                        const line2 = cleanedLines[1];
+                        if (line2.length >= 30) {
+                            // Format dates (YYMMDD)
+                            const birthDateStr = line2.substring(0, 6);
+                            info.birthDate = `${birthDateStr.substring(4, 6)}/${birthDateStr.substring(2, 4)}/${birthDateStr.substring(0, 2)}`;
+                            
+                            info.gender = line2.substring(7, 8);
+                            
+                            const expiryDateStr = line2.substring(8, 14);
+                            info.expiryDate = `${expiryDateStr.substring(4, 6)}/${expiryDateStr.substring(2, 4)}/${expiryDateStr.substring(0, 2)}`;
+                            
+                            info.nationality = line2.substring(15, 18);
+                        }
+                        
+                        if (cleanedLines.length >= 3) {
+                            // Third line typically contains name
+                            const line3 = cleanedLines[2].replace(/</g, ' ').trim();
+                            const nameParts = line3.split('  ');
+                            if (nameParts.length >= 1) {
+                                info.surname = nameParts[0];
+                                info.givenNames = nameParts[1] || '';
+                            }
+                        }
+                    }
                 }
             } catch (e) {
                 console.error("Error parsing MRZ data:", e);
@@ -361,9 +602,9 @@
                 <strong>Parsed Information:</strong><br>
                 Document Type: ${info.documentType}<br>
                 Issuing Country: ${info.issuingCountry}<br>
+                Document Number: ${info.documentNumber}<br>
                 Surname: ${info.surname}<br>
                 Given Names: ${info.givenNames}<br>
-                Document Number: ${info.documentNumber}<br>
                 Nationality: ${info.nationality}<br>
                 Birth Date: ${info.birthDate}<br>
                 Gender: ${info.gender}<br>
