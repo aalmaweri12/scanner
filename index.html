@@ -88,23 +88,38 @@
       const [cameras, setCameras] = useState([]);
       const [selectedCamera, setSelectedCamera] = useState('');
       const [scannerReady, setScannerReady] = useState(false);
+      const [hasCamera, setHasCamera] = useState(null);
 
-      // Get available cameras
+      // Check if the browser supports the necessary APIs
       useEffect(() => {
-        const getCameras = async () => {
-          try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setError('Your browser does not support camera access. Please try a modern browser like Chrome, Firefox, or Safari.');
+          setHasCamera(false);
+          return;
+        }
+        
+        // Check for camera permissions proactively
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then(stream => {
+            // Stop the stream immediately after proving we can access it
+            stream.getTracks().forEach(track => track.stop());
+            setHasCamera(true);
+            // Now enumerate all available devices
+            return navigator.mediaDevices.enumerateDevices();
+          })
+          .then(devices => {
             const videoDevices = devices.filter(device => device.kind === 'videoinput');
             setCameras(videoDevices);
             if (videoDevices.length > 0) {
-              setSelectedCamera(videoDevices[videoDevices.length - 1].deviceId); // Default to last camera (likely back camera on mobile)
+              // Prefer back camera on mobile (typically the last in the list)
+              setSelectedCamera(videoDevices[videoDevices.length - 1].deviceId);
             }
-          } catch (err) {
-            setError('Error accessing camera devices: ' + err.message);
-          }
-        };
-        
-        getCameras();
+          })
+          .catch(err => {
+            console.error("Camera permission error:", err);
+            setError(`Camera access error: ${err.message}. Please allow camera access.`);
+            setHasCamera(false);
+          });
       }, []);
 
       // Start camera stream
@@ -112,28 +127,56 @@
         setError(null);
         setResult(null);
         
+        if (!hasCamera) {
+          setError('No camera access. Please check your permissions and try again.');
+          return;
+        }
+        
         try {
+          // If no specific camera is selected but cameras are available, select the first one
+          if (!selectedCamera && cameras.length > 0) {
+            setSelectedCamera(cameras[0].deviceId);
+          }
+          
           const constraints = {
             video: {
-              deviceId: selectedCamera ? { exact: selectedCamera } : undefined,
-              facingMode: "environment",
               width: { ideal: 1280 },
               height: { ideal: 720 }
             }
           };
           
+          // Add deviceId constraint if we have a selected camera
+          if (selectedCamera) {
+            constraints.video.deviceId = { exact: selectedCamera };
+          } else {
+            // Fallback to environment facing camera if available
+            constraints.video.facingMode = { ideal: "environment" };
+          }
+          
+          console.log("Requesting camera with constraints:", constraints);
+          
           const stream = await navigator.mediaDevices.getUserMedia(constraints);
+          console.log("Got camera stream:", stream);
+          
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
             videoRef.current.onloadedmetadata = () => {
-              videoRef.current.play();
-              setScanning(true);
-              captureFrames();
-              setScannerReady(true);
+              videoRef.current.play()
+                .then(() => {
+                  console.log("Video playback started");
+                  setScanning(true);
+                  setScannerReady(true);
+                  captureFrames();
+                })
+                .catch(err => {
+                  console.error("Video playback error:", err);
+                  setError(`Video playback error: ${err.message}`);
+                });
             };
           }
         } catch (err) {
-          setError('Error accessing camera: ' + err.message);
+          console.error("Camera access error:", err);
+          setError(`Failed to access camera: ${err.message}. Please check permissions.`);
         }
       };
 
@@ -142,6 +185,7 @@
         if (videoRef.current && videoRef.current.srcObject) {
           const tracks = videoRef.current.srcObject.getTracks();
           tracks.forEach(track => track.stop());
+          videoRef.current.srcObject = null;
           setScanning(false);
           setScannerReady(false);
         }
@@ -221,6 +265,7 @@
             <video 
               ref={videoRef} 
               className="w-full h-full object-cover"
+              autoPlay
               playsInline
               muted
             />
@@ -235,6 +280,14 @@
                 <div className="scan-line"></div>
               </div>
             )}
+
+            {!scanning && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 text-white">
+                <div className="text-center p-4">
+                  <p>Camera preview will appear here</p>
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="w-full flex flex-col sm:flex-row gap-3 mb-6">
@@ -242,19 +295,24 @@
               className="flex-grow p-2 border border-gray-300 rounded"
               value={selectedCamera}
               onChange={handleCameraChange}
-              disabled={scanning}
+              disabled={scanning || cameras.length === 0}
             >
-              {cameras.map(camera => (
-                <option key={camera.deviceId} value={camera.deviceId}>
-                  {camera.label || `Camera ${cameras.indexOf(camera) + 1}`}
-                </option>
-              ))}
+              {cameras.length === 0 ? (
+                <option value="">No cameras found</option>
+              ) : (
+                cameras.map(camera => (
+                  <option key={camera.deviceId} value={camera.deviceId}>
+                    {camera.label || `Camera ${cameras.indexOf(camera) + 1}`}
+                  </option>
+                ))
+              )}
             </select>
             
             {!scanning ? (
               <button
                 className="sm:flex-shrink-0 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-6 rounded"
                 onClick={startScanning}
+                disabled={!hasCamera}
               >
                 Start Scanning
               </button>
@@ -291,7 +349,6 @@
                 className="mt-4 w-full bg-gray-800 hover:bg-gray-900 text-white font-medium py-2 px-4 rounded"
                 onClick={() => {
                   setResult(null);
-                  setScanning(false);
                 }}
               >
                 Clear Results
@@ -300,14 +357,15 @@
           )}
           
           <div className="w-full mt-6 text-sm text-gray-600">
-            <p className="mb-2"><strong>Note:</strong> This demo automatically simulates a successful scan after 3 seconds.</p>
-            <p>For a production implementation, you would need to integrate a PDF417 barcode scanning library like:</p>
+            <p className="mb-2"><strong>Important:</strong> If the camera doesn't open:</p>
             <ul className="list-disc ml-5 space-y-1 mt-2">
-              <li>ZXing (Zebra Crossing)</li>
-              <li>Dynamsoft Barcode Reader</li>
-              <li>QuaggaJS</li>
-              <li>Commercial SDKs like Scandit or Barkoder</li>
+              <li>Make sure you're using a secure context (https:// or localhost)</li>
+              <li>Check that camera permissions are allowed in your browser</li>
+              <li>Try opening this file from a web server instead of directly</li>
+              <li>Some browsers restrict camera access in locally opened files</li>
             </ul>
+            
+            <p className="mt-4 mb-2"><strong>Note:</strong> This demo automatically simulates a successful scan after 3 seconds.</p>
           </div>
         </div>
       );
