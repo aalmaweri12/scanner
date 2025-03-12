@@ -40,6 +40,12 @@
         #canvas {
             display: none;
         }
+        #debug-canvas {
+            display: none;
+            width: 100%;
+            border: 1px solid #ddd;
+            margin-top: 10px;
+        }
         #scanBtn {
             background-color: #4CAF50;
             color: white;
@@ -50,6 +56,16 @@
             cursor: pointer;
             width: 100%;
             margin-bottom: 20px;
+        }
+        #debugBtn {
+            background-color: #f0ad4e;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 10px;
         }
         #scanBtn:hover {
             background-color: #45a049;
@@ -65,6 +81,11 @@
             background-color: #f9f9f9;
             border: 1px solid #ddd;
             word-break: break-all;
+        }
+        #status {
+            margin-top: 10px;
+            color: #666;
+            font-style: italic;
         }
         .scan-area {
             position: absolute;
@@ -168,6 +189,9 @@
         </div>
         
         <button id="scanBtn">Start Camera</button>
+        <div id="status">Camera inactive</div>
+        <button id="debugBtn" style="display: none;">Toggle Debug View</button>
+        <canvas id="debug-canvas"></canvas>
         
         <div id="result">No barcode detected</div>
         
@@ -182,15 +206,22 @@
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+        const debugCanvas = document.getElementById('debug-canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const debugCtx = debugCanvas.getContext('2d');
         const scanBtn = document.getElementById('scanBtn');
+        const debugBtn = document.getElementById('debugBtn');
         const resultDiv = document.getElementById('result');
+        const statusDiv = document.getElementById('status');
         const historyList = document.getElementById('historyList');
         const toast = document.getElementById('toast');
         
         let stream = null;
         let scanning = false;
         let scanHistory = [];
+        let lastScannedCode = null;
+        let scanInterval = null;
+        let debugMode = false;
         
         // Load scan history from localStorage
         if (localStorage.getItem('scanHistory')) {
@@ -212,30 +243,67 @@
             }
         });
         
+        // Debug mode toggle
+        debugBtn.addEventListener('click', function() {
+            debugMode = !debugMode;
+            debugCanvas.style.display = debugMode ? 'block' : 'none';
+        });
+        
         function startCamera() {
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                navigator.mediaDevices.getUserMedia({ 
+                statusDiv.textContent = "Starting camera...";
+                
+                let constraints = { 
                     video: { 
                         facingMode: 'environment',
                         width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    } 
-                })
+                        height: { ideal: 720 },
+                        frameRate: { ideal: 15 }
+                    },
+                    audio: false
+                };
+                
+                navigator.mediaDevices.getUserMedia(constraints)
                 .then(function(s) {
                     stream = s;
                     video.srcObject = stream;
                     video.setAttribute('playsinline', true);
-                    video.play();
-                    scanning = true;
-                    scanBtn.textContent = 'Stop Camera';
-                    requestAnimationFrame(tick);
-                    showToast('Camera started. Point at a barcode to scan.');
+                    
+                    video.onloadedmetadata = function() {
+                        video.play()
+                        .then(() => {
+                            scanning = true;
+                            scanBtn.textContent = 'Stop Camera';
+                            statusDiv.textContent = "Camera active - scanning for barcodes";
+                            
+                            // Set canvas dimensions based on video stream
+                            canvas.width = video.videoWidth;
+                            canvas.height = video.videoHeight;
+                            debugCanvas.width = video.videoWidth;
+                            debugCanvas.height = video.videoHeight;
+                            
+                            // Enable debug button
+                            debugBtn.style.display = 'inline-block';
+                            
+                            // Start scanning using an interval for more reliable detection
+                            scanInterval = setInterval(scanVideoFrame, 200);
+                            
+                            showToast('Camera started. Point at a barcode to scan.');
+                        })
+                        .catch(function(err) {
+                            console.error('Error playing video:', err);
+                            statusDiv.textContent = "Error starting video stream";
+                            showToast('Error starting video.');
+                        });
+                    };
                 })
                 .catch(function(err) {
                     console.error('Error accessing camera:', err);
+                    statusDiv.textContent = "Error accessing camera";
                     showToast('Error accessing camera. Please check permissions.');
                 });
             } else {
+                statusDiv.textContent = "Your browser doesn't support camera access";
                 showToast('Your browser does not support camera access.');
             }
         }
@@ -246,16 +314,33 @@
                 video.srcObject = null;
                 scanning = false;
                 scanBtn.textContent = 'Start Camera';
+                statusDiv.textContent = "Camera inactive";
+                debugBtn.style.display = 'none';
+                debugCanvas.style.display = 'none';
+                
+                if (scanInterval) {
+                    clearInterval(scanInterval);
+                    scanInterval = null;
+                }
             }
         }
         
-        function tick() {
-            if (video.readyState === video.HAVE_ENOUGH_DATA && scanning) {
-                canvas.height = video.videoHeight;
-                canvas.width = video.videoWidth;
+        function scanVideoFrame() {
+            if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+                return;
+            }
+            
+            try {
+                // Draw the current video frame to the canvas
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
+                // Get the image data from the canvas
                 const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                
+                // If in debug mode, show what the camera sees
+                if (debugMode) {
+                    debugCtx.putImageData(imageData, 0, 0);
+                }
                 
                 // jsQR detection
                 const code = jsQR(imageData.data, imageData.width, imageData.height, {
@@ -263,25 +348,60 @@
                 });
                 
                 if (code) {
-                    // We found a barcode
-                    const lastScan = scanHistory.length > 0 ? scanHistory[0].content : null;
+                    // Draw bounding box if in debug mode
+                    if (debugMode) {
+                        drawBoundingBox(code.location, debugCtx);
+                    }
                     
-                    // Only add to history if it's a new code
-                    if (lastScan !== code.data) {
+                    // Only process if it's a new code or more than 3 seconds since last scan
+                    const currentTime = new Date().getTime();
+                    const isNewCode = (lastScannedCode === null || 
+                                      lastScannedCode.data !== code.data || 
+                                      (currentTime - lastScannedCode.timestamp > 3000));
+                    
+                    if (isNewCode) {
+                        console.log("QR Code detected:", code.data);
                         resultDiv.innerText = code.data;
+                        statusDiv.textContent = "Barcode detected!";
                         
                         // Add to history
                         addToHistory(code.data);
+                        
+                        // Update last scanned code
+                        lastScannedCode = {
+                            data: code.data,
+                            timestamp: currentTime
+                        };
                         
                         // Visual feedback
                         showToast('Barcode detected!');
                     }
                 }
-                
-                requestAnimationFrame(tick);
-            } else if (scanning) {
-                requestAnimationFrame(tick);
+            } catch (error) {
+                console.error("Error scanning frame:", error);
+                statusDiv.textContent = "Error during scan";
             }
+        }
+        
+        function drawBoundingBox(location, context) {
+            // Draw bounding box
+            context.beginPath();
+            context.moveTo(location.topLeftCorner.x, location.topLeftCorner.y);
+            context.lineTo(location.topRightCorner.x, location.topRightCorner.y);
+            context.lineTo(location.bottomRightCorner.x, location.bottomRightCorner.y);
+            context.lineTo(location.bottomLeftCorner.x, location.bottomLeftCorner.y);
+            context.lineTo(location.topLeftCorner.x, location.topLeftCorner.y);
+            context.lineWidth = 4;
+            context.strokeStyle = "#FF3B58";
+            context.stroke();
+            
+            // Draw corner points
+            context.fillStyle = "#00FF00";
+            const pointSize = 8;
+            [location.topLeftCorner, location.topRightCorner, 
+             location.bottomRightCorner, location.bottomLeftCorner].forEach(point => {
+                context.fillRect(point.x - pointSize/2, point.y - pointSize/2, pointSize, pointSize);
+            });
         }
         
         function addToHistory(content) {
@@ -335,6 +455,24 @@
                 toast.classList.remove('show');
             }, 3000);
         }
+        
+        // Handle page visibility changes to manage camera resources
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden && scanning) {
+                // Page is hidden, pause scanning to save resources
+                if (scanInterval) {
+                    clearInterval(scanInterval);
+                    scanInterval = null;
+                }
+                statusDiv.textContent = "Scanning paused (page inactive)";
+            } else if (!document.hidden && scanning) {
+                // Page is visible again, resume scanning
+                if (!scanInterval) {
+                    scanInterval = setInterval(scanVideoFrame, 200);
+                    statusDiv.textContent = "Camera active - scanning for barcodes";
+                }
+            }
+        });
         
         // Initialize proper height for mobile
         function setInitialHeight() {
