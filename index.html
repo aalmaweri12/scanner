@@ -3,122 +3,299 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Extractor & Scanners</title>
-    <link rel="stylesheet" href="/css/Extract_Info_styles.css">
-    <link rel="stylesheet" href="/css/navigation.css">
+    <title>Data Extractor</title>
 
-    <!-- External Libraries -->
+    
+    <!-- SweetAlert2 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+    <!-- ZXing Library for PDF417 scanning -->
     <script src="https://unpkg.com/@zxing/library@latest"></script>
-
+    
+    <!-- Added styles for PDF417 scanner -->
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; background-color: #f5f5f5; }
-        .scanner-container { display: none; }
-        .video-container { position: relative; width: 100%; max-width: 600px; margin: 0 auto; }
-        video { width: 100%; max-width: 600px; border: 2px solid #333; display: block; }
-        #scan-region { position: absolute; bottom: 15%; left: 50%; transform: translateX(-50%); width: 92%; height: 20%; border: 3px solid red; }
-        #scan-region.detected { border-color: #00cc00; }
-        .controls { margin-top: 15px; display: flex; justify-content: center; gap: 10px; }
-        button { padding: 12px 24px; font-size: 16px; background-color: #4285f4; color: white; border: none; cursor: pointer; }
-        button:hover { background-color: #3367d6; }
-        textarea { width: 80%; height: 100px; margin-top: 20px; }
+        /* Scanner toggle button styles */
+        #toggleScannerBtn {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+        }
+        
+        #toggleScannerBtn:hover {
+            background-color: #3367d6;
+        }
+        
+        /* Scanner container styles */
+        #scannerContainer {
+            display: none;
+            margin: 20px auto;
+            max-width: 600px;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        /* PDF417 Scanner styles */
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        video { 
+            width: 100%; 
+            max-width: 600px; 
+            border: 2px solid #333; 
+            display: block;
+        }
+        
+        #scan-region {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 25%;
+            border: 3px solid red;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+        
+        #scan-region.detected {
+            border-color: #00cc00;
+        }
+        
+        #scanResult { 
+            margin-top: 20px; 
+            font-size: 18px; 
+            font-weight: bold;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        button { 
+            padding: 12px 24px; 
+            font-size: 16px; 
+            margin-top: 15px;
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #3367d6;
+        }
+        
+        .status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
-
-    <h1>Data Extractor & Scanners</h1>
-
-    <div class="scanner-toggle">
-        <button onclick="toggleScanner('mrz')">MRZ Scanner</button>
-        <button onclick="toggleScanner('pdf417')">PDF417 Scanner</button>
-    </div>
-
-    <!-- MRZ Scanner -->
-    <div id="mrz-scanner" class="scanner-container">
-        <h3>MRZ Scanner</h3>
+    
+    <h1>Data Extractor</h1>
+    
+    <!-- Scanner Toggle Button -->
+    <button id="toggleScannerBtn" onclick="toggleScanner()">Open PDF417 Scanner</button>
+    
+    <!-- PDF417 Scanner Container (Hidden by Default) -->
+    <div id="scannerContainer">
+        <h2>PDF417 Scanner</h2>
+        <p class="status">Position the PDF417 barcode within the scanning area</p>
+        
         <div class="video-container">
-            <video id="mrz-video" autoplay playsinline></video>
+            <video id="video" autoplay playsinline></video>
             <div id="scan-region"></div>
         </div>
-        <div class="controls">
-            <button onclick="startMRZScanning()">Start Camera</button>
-            <button onclick="captureAndProcessMRZ()" disabled>Capture MRZ</button>
-        </div>
-        <p id="mrz-result">Waiting for scan...</p>
+        
+        <button id="startButton" onclick="startScan()">Start Scan</button>
+        <p id="scanResult">Scan a PDF417 barcode...</p>
+        <button id="useScanResultBtn" onclick="useScanResult()" style="display: none;">Use Scan Result</button>
     </div>
-
-    <!-- PDF417 Scanner -->
-    <div id="pdf417-scanner" class="scanner-container">
-        <h3>PDF417 Scanner</h3>
-        <div class="video-container">
-            <video id="pdf417-video" autoplay playsinline></video>
-        </div>
-        <button onclick="startPDF417Scan()">Start Scan</button>
-        <p id="pdf417-result">Scan a PDF417 barcode...</p>
+    
+    <textarea id="rawData" placeholder="Paste your raw data here..."></textarea>
+    <div style="text-align: center; margin: 20px 0;">
+        <button id="extractData" onclick="extractData()">Extract Data</button>
     </div>
-
-    <!-- Extracted Data Input -->
-    <h2>Extracted Information</h2>
-    <textarea id="rawData" placeholder="Scanned data will appear here..."></textarea>
 
     <div class="output">
-        <p><strong>Last Name:</strong> <input type="text" id="lastName"></p>
-        <p><strong>First Name:</strong> <input type="text" id="firstName"></p>
-        <p><strong>Date of Birth:</strong> <input type="text" id="dob"></p>
-        <p><strong>ID Number:</strong> <input type="text" id="idNumber"></p>
+        <h2>Extracted Information:</h2>
+        <!-- ID field -->
+        <div class="row-group">
+            <p><strong>ICDID:</strong> <input type="text" id="icdid"></p>
+            <p><strong>ID Number:</strong> <input type="text" id="idNumber"></p>
+        </div>
+        
+        <!-- Name row -->
+        <div class="name-group">
+            <p><strong>Last Name:</strong> <input type="text" id="lastName"></p>
+            <p><strong>First Name:</strong> <input type="text" id="firstName"></p>
+            <p><strong>Date of Birth:</strong> <input type="text" id="dob"></p>
+        </div>
+        
+        <!-- DOB row -->
+        <!-- Address row -->
+        <div class="address-group">
+            <p class="address-field"><strong>Address:</strong> <input type="text" id="address"></p>
+            <p class="city-field"><strong>City:</strong> <input type="text" id="city"></p>
+            <p class="state-field"><strong>State:</strong> <input type="text" id="state"></p>
+            <p class="postal-field"><strong>Postal Code:</strong> <input type="text" id="postalCode"></p>
+        </div>
     </div>
 
+    <div style="text-align: center; margin: 20px 0;">
+        <button id="submitData" onclick="submitData()">Submit Data</button>
+    </div>
+
+    <!-- External JavaScript File -->
+    <script src="/js/Extract_Info_script.js"></script>
+    
+    <!-- PDF417 Scanner Script -->
     <script>
-        function toggleScanner(scannerType) {
-            document.getElementById("mrz-scanner").style.display = (scannerType === 'mrz') ? "block" : "none";
-            document.getElementById("pdf417-scanner").style.display = (scannerType === 'pdf417') ? "block" : "none";
+        // Scanner toggle functionality
+        function toggleScanner() {
+            const scannerContainer = document.getElementById('scannerContainer');
+            const toggleBtn = document.getElementById('toggleScannerBtn');
+            
+            if (scannerContainer.style.display === 'block') {
+                scannerContainer.style.display = 'none';
+                toggleBtn.textContent = 'Open PDF417 Scanner';
+                stopScan(); // Stop scanner when hiding
+            } else {
+                scannerContainer.style.display = 'block';
+                toggleBtn.textContent = 'Close PDF417 Scanner';
+            }
         }
+        
+        // PDF417 Scanner Code (Unchanged)
+        let video = document.getElementById('video');
+        let scanResult = document.getElementById('scanResult');
+        let scanRegion = document.getElementById('scan-region');
+        let startButton = document.getElementById('startButton');
+        let useScanResultBtn = document.getElementById('useScanResultBtn');
+        let selectedDeviceId = null;
+        let lastScanResult = null;
+        const codeReader = new ZXing.BrowserMultiFormatReader();
+        
+        // Configure hints to focus on PDF417 format only
+        const formats = [ZXing.BarcodeFormat.PDF_417];
+        const hints = new Map();
+        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+        
+        codeReader.hints = hints;
 
-        // MRZ Scanner
-        async function startMRZScanning() {
-            let mrzVideo = document.getElementById('mrz-video');
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            mrzVideo.srcObject = stream;
-        }
+        async function startScan() {
+            try {
+                startButton.disabled = true;
+                startButton.textContent = "Scanning...";
+                scanResult.innerText = "Looking for PDF417 barcode...";
+                useScanResultBtn.style.display = 'none';
+                
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
 
-        async function captureAndProcessMRZ() {
-            let mrzVideo = document.getElementById('mrz-video');
-            let canvas = document.createElement('canvas');
-            let ctx = canvas.getContext('2d');
-            canvas.width = mrzVideo.videoWidth;
-            canvas.height = mrzVideo.videoHeight;
-            ctx.drawImage(mrzVideo, 0, 0, canvas.width, canvas.height);
-
-            const { data } = await Tesseract.recognize(canvas, 'eng');
-            let extractedData = data.text.replace(/\s+/g, ' ').trim();
-            document.getElementById("rawData").value = extractedData;
-            parseExtractedData(extractedData);
-        }
-
-        // PDF417 Scanner
-        async function startPDF417Scan() {
-            let video = document.getElementById('pdf417-video');
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            video.srcObject = stream;
-            const codeReader = new ZXing.BrowserMultiFormatReader();
-            codeReader.decodeFromVideoDevice(undefined, video, (result) => {
-                if (result) {
-                    document.getElementById("rawData").value = result.getText();
-                    parseExtractedData(result.getText());
+                if (videoDevices.length > 1) {
+                    // Try to find the back camera
+                    selectedDeviceId = videoDevices.find(device => 
+                        device.label.toLowerCase().includes('back'))?.deviceId || videoDevices[0].deviceId;
+                } else if (videoDevices.length === 1) {
+                    selectedDeviceId = videoDevices[0].deviceId;
+                } else {
+                    scanResult.innerText = "No camera found!";
+                    startButton.disabled = false;
+                    startButton.textContent = "Try Again";
+                    return;
                 }
-            });
+
+                // Set camera constraints with improved focus
+                const constraints = {
+                    video: {
+                        deviceId: selectedDeviceId,
+                        facingMode: "environment",
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        advanced: [
+                            { focusMode: "continuous" },
+                            { zoom: 1 }
+                        ]
+                    }
+                };
+
+                // Start continuous scanning
+                codeReader.decodeFromConstraints(
+                    constraints, 
+                    video, 
+                    (result, err) => {
+                        if (result && result.getBarcodeFormat() === ZXing.BarcodeFormat.PDF_417) {
+                            // PDF417 barcode detected
+                            scanRegion.classList.add("detected");
+                            lastScanResult = result.getText();
+                            scanResult.innerText = "PDF417 Scanned: " + lastScanResult;
+                            useScanResultBtn.style.display = 'inline-block';
+                            
+                            // Keep scanning but update the UI
+                            setTimeout(() => {
+                                startButton.disabled = false;
+                                startButton.textContent = "Scan Again";
+                            }, 1000);
+                        } else {
+                            // Reset the detection indicator if no PDF417 is detected
+                            scanRegion.classList.remove("detected");
+                        }
+                        
+                        if (err && !(err instanceof ZXing.NotFoundException)) {
+                            console.error(err);
+                        }
+                    }
+                );
+            } catch (error) {
+                console.error("Error starting scan:", error);
+                scanResult.innerText = "Camera access denied or error!";
+                startButton.disabled = false;
+                startButton.textContent = "Try Again";
+            }
         }
 
-        // Extract Data
-        function parseExtractedData(text) {
-            let lines = text.split("\n");
-            document.getElementById("lastName").value = lines[0] || "";
-            document.getElementById("firstName").value = lines[1] || "";
-            document.getElementById("dob").value = lines[2] || "";
-            document.getElementById("idNumber").value = lines[3] || "";
+        // Function to stop scanning
+        function stopScan() {
+            codeReader.reset();
+            startButton.disabled = false;
+            startButton.textContent = "Start Scan";
+            scanRegion.classList.remove("detected");
         }
+        
+        // Function to use the scan result
+        function useScanResult() {
+            if (lastScanResult) {
+                document.getElementById('rawData').value = lastScanResult;
+                toggleScanner(); // Close scanner after using result
+                
+                // Optionally auto-extract the data
+                if (typeof extractData === 'function') {
+                    extractData();
+                }
+            }
+        }
+        
+        // Handle page visibility changes to manage resources
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopScan();
+            }
+        });
     </script>
-
 </body>
 </html>
