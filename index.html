@@ -3,298 +3,327 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Extractor</title>
-
-    
-    <!-- SweetAlert2 CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- ZXing Library for PDF417 scanning -->
-    <script src="https://unpkg.com/@zxing/library@latest"></script>
-    
-    <!-- Added styles for PDF417 scanner -->
+    <title>Shopping Discount App</title>
     <style>
-        /* Scanner toggle button styles */
-        #toggleScannerBtn {
-            background-color: #4285f4;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 10px;
-            font-size: 16px;
-        }
-        
-        #toggleScannerBtn:hover {
-            background-color: #3367d6;
-        }
-        
-        /* Scanner container styles */
-        #scannerContainer {
-            display: none;
-            margin: 20px auto;
-            max-width: 600px;
-            background-color: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        /* PDF417 Scanner styles */
-        .video-container {
-            position: relative;
-            width: 100%;
+        body {
+            font-family: Arial, sans-serif;
             max-width: 600px;
             margin: 0 auto;
+            padding: 20px;
         }
-        
-        video { 
-            width: 100%; 
-            max-width: 600px; 
-            border: 2px solid #333; 
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
             display: block;
-        }
-        
-        #scan-region {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 80%;
-            height: 25%;
-            border: 3px solid red;
-            box-sizing: border-box;
-            transition: border-color 0.3s ease;
-        }
-        
-        #scan-region.detected {
-            border-color: #00cc00;
-        }
-        
-        #scanResult { 
-            margin-top: 20px; 
-            font-size: 18px; 
+            margin-bottom: 5px;
             font-weight: bold;
-            padding: 10px;
-            background-color: #fff;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-        
-        button { 
-            padding: 12px 24px; 
-            font-size: 16px; 
-            margin-top: 15px;
-            background-color: #4285f4;
+        input[type="number"], select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        button {
+            background-color: #4CAF50;
             color: white;
+            padding: 10px 15px;
             border: none;
-            border-radius: 5px;
+            border-radius: 4px;
             cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        
-        button:hover {
-            background-color: #3367d6;
-        }
-        
-        .status {
+            font-size: 16px;
+            width: 100%;
             margin-top: 10px;
-            font-size: 14px;
-            color: #666;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            display: none;
+        }
+        .discount-item {
+            margin-bottom: 8px;
+        }
+        .applied {
+            color: green;
+            font-weight: bold;
+        }
+        .not-applied {
+            color: #999;
         }
     </style>
 </head>
 <body>
+    <h1>Shopping Discount App</h1>
     
-    <h1>Data Extractor</h1>
-    
-    <!-- Scanner Toggle Button -->
-    <button id="toggleScannerBtn" onclick="toggleScanner()">Open PDF417 Scanner</button>
-    
-    <!-- PDF417 Scanner Container (Hidden by Default) -->
-    <div id="scannerContainer">
-        <h2>PDF417 Scanner</h2>
-        <p class="status">Position the PDF417 barcode within the scanning area</p>
-        
-        <div class="video-container">
-            <video id="video" autoplay playsinline></video>
-            <div id="scan-region"></div>
-        </div>
-        
-        <button id="startButton" onclick="startScan()">Start Scan</button>
-        <p id="scanResult">Scan a PDF417 barcode...</p>
-        <button id="useScanResultBtn" onclick="useScanResult()" style="display: none;">Use Scan Result</button>
+    <div class="form-group">
+        <label for="cartAmount">Total Cart Amount ($):</label>
+        <input type="number" id="cartAmount" min="0" step="0.01" required>
     </div>
     
-    <textarea id="rawData" placeholder="Paste your raw data here..."></textarea>
-    <div style="text-align: center; margin: 20px 0;">
-        <button id="extractData" onclick="extractData()">Extract Data</button>
+    <div class="form-group">
+        <label for="options">Customer Options:</label>
+        <div>
+            <input type="checkbox" id="loyaltyMember">
+            <label for="loyaltyMember" style="display: inline;">Loyalty Member (10% discount)</label>
+        </div>
+        <div>
+            <input type="checkbox" id="seasonalEvent">
+            <label for="seasonalEvent" style="display: inline;">Seasonal Event (20% discount)</label>
+        </div>
+        <div>
+            <input type="checkbox" id="firstTimeCustomer">
+            <label for="firstTimeCustomer" style="display: inline;">First-Time Customer (5% discount)</label>
+        </div>
     </div>
-
-    <div class="output">
-        <h2>Extracted Information:</h2>
-        <!-- ID field -->
-        <div class="row-group">
-            <p><strong>ICDID:</strong> <input type="text" id="icdid"></p>
-            <p><strong>ID Number:</strong> <input type="text" id="idNumber"></p>
-        </div>
-        
-        <!-- Name row -->
-        <div class="name-group">
-            <p><strong>Last Name:</strong> <input type="text" id="lastName"></p>
-            <p><strong>First Name:</strong> <input type="text" id="firstName"></p>
-            <p><strong>Date of Birth:</strong> <input type="text" id="dob"></p>
-        </div>
-        
-        <!-- DOB row -->
-        <!-- Address row -->
-        <div class="address-group">
-            <p class="address-field"><strong>Address:</strong> <input type="text" id="address"></p>
-            <p class="city-field"><strong>City:</strong> <input type="text" id="city"></p>
-            <p class="state-field"><strong>State:</strong> <input type="text" id="state"></p>
-            <p class="postal-field"><strong>Postal Code:</strong> <input type="text" id="postalCode"></p>
-        </div>
+    
+    <button id="calculateBtn">Calculate Discount</button>
+    
+    <div id="result">
+        <h3>Discount Summary:</h3>
+        <div id="discountDetails"></div>
+        <div id="appliedDiscounts"></div>
+        <h3>Final Price: <span id="finalPrice">$0.00</span></h3>
     </div>
 
-    <div style="text-align: center; margin: 20px 0;">
-        <button id="submitData" onclick="submitData()">Submit Data</button>
-    </div>
-
-    <!-- External JavaScript File -->
-    <script src="/js/Extract_Info_script.js"></script>
-    
-    <!-- PDF417 Scanner Script -->
     <script>
-        // Scanner toggle functionality
-        function toggleScanner() {
-            const scannerContainer = document.getElementById('scannerContainer');
-            const toggleBtn = document.getElementById('toggleScannerBtn');
+        // Discount Handler abstract class (base prototype for our handlers)
+        class DiscountHandler {
+            constructor(name, discountPercent) {
+                this.name = name;
+                this.discountPercent = discountPercent;
+                this.nextHandler = null;
+                this.appliedDiscount = 0;
+            }
             
-            if (scannerContainer.style.display === 'block') {
-                scannerContainer.style.display = 'none';
-                toggleBtn.textContent = 'Open PDF417 Scanner';
-                stopScan(); // Stop scanner when hiding
-            } else {
-                scannerContainer.style.display = 'block';
-                toggleBtn.textContent = 'Close PDF417 Scanner';
+            // Set the next handler in the chain
+            setNext(handler) {
+                this.nextHandler = handler;
+                return handler; // Return handler to allow chaining
+            }
+            
+            // Process the request and pass to next handler if exists
+            process(request) {
+                // Each concrete handler will implement this
+                this.calculateDiscount(request);
+                
+                // Pass to the next handler if it exists
+                if (this.nextHandler) {
+                    this.nextHandler.process(request);
+                }
+            }
+            
+            // Calculate discount (to be implemented by concrete handlers)
+            calculateDiscount(request) {
+                // Abstract method - implemented by concrete handlers
             }
         }
         
-        // PDF417 Scanner Code (Unchanged)
-        let video = document.getElementById('video');
-        let scanResult = document.getElementById('scanResult');
-        let scanRegion = document.getElementById('scan-region');
-        let startButton = document.getElementById('startButton');
-        let useScanResultBtn = document.getElementById('useScanResultBtn');
-        let selectedDeviceId = null;
-        let lastScanResult = null;
-        const codeReader = new ZXing.BrowserMultiFormatReader();
-        
-        // Configure hints to focus on PDF417 format only
-        const formats = [ZXing.BarcodeFormat.PDF_417];
-        const hints = new Map();
-        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
-        
-        codeReader.hints = hints;
-
-        async function startScan() {
-            try {
-                startButton.disabled = true;
-                startButton.textContent = "Scanning...";
-                scanResult.innerText = "Looking for PDF417 barcode...";
-                useScanResultBtn.style.display = 'none';
-                
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                const videoDevices = devices.filter(device => device.kind === 'videoinput');
-
-                if (videoDevices.length > 1) {
-                    // Try to find the back camera
-                    selectedDeviceId = videoDevices.find(device => 
-                        device.label.toLowerCase().includes('back'))?.deviceId || videoDevices[0].deviceId;
-                } else if (videoDevices.length === 1) {
-                    selectedDeviceId = videoDevices[0].deviceId;
+        // SeasonalDiscountHandler concrete class
+        class SeasonalDiscountHandler extends DiscountHandler {
+            constructor() {
+                super("Seasonal Discount", 20);
+            }
+            
+            calculateDiscount(request) {
+                if (request.isSeasonalEvent) {
+                    this.appliedDiscount = request.cartAmount * (this.discountPercent / 100);
+                    request.discounts.push({
+                        name: `${this.name} (${this.discountPercent}%)`,
+                        amount: this.appliedDiscount,
+                        handler: this
+                    });
+                    
+                    request.discountDetails += `<div class="discount-item">Seasonal Discount: $${this.appliedDiscount.toFixed(2)}</div>`;
                 } else {
-                    scanResult.innerText = "No camera found!";
-                    startButton.disabled = false;
-                    startButton.textContent = "Try Again";
-                    return;
+                    request.discountDetails += `<div class="discount-item not-applied">Seasonal Discount: Not applicable</div>`;
                 }
-
-                // Set camera constraints with improved focus
-                const constraints = {
-                    video: {
-                        deviceId: selectedDeviceId,
-                        facingMode: "environment",
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 },
-                        advanced: [
-                            { focusMode: "continuous" },
-                            { zoom: 1 }
-                        ]
-                    }
-                };
-
-                // Start continuous scanning
-                codeReader.decodeFromConstraints(
-                    constraints, 
-                    video, 
-                    (result, err) => {
-                        if (result && result.getBarcodeFormat() === ZXing.BarcodeFormat.PDF_417) {
-                            // PDF417 barcode detected
-                            scanRegion.classList.add("detected");
-                            lastScanResult = result.getText();
-                            scanResult.innerText = "PDF417 Scanned: " + lastScanResult;
-                            useScanResultBtn.style.display = 'inline-block';
-                            
-                            // Keep scanning but update the UI
-                            setTimeout(() => {
-                                startButton.disabled = false;
-                                startButton.textContent = "Scan Again";
-                            }, 1000);
-                        } else {
-                            // Reset the detection indicator if no PDF417 is detected
-                            scanRegion.classList.remove("detected");
-                        }
-                        
-                        if (err && !(err instanceof ZXing.NotFoundException)) {
-                            console.error(err);
-                        }
-                    }
-                );
-            } catch (error) {
-                console.error("Error starting scan:", error);
-                scanResult.innerText = "Camera access denied or error!";
-                startButton.disabled = false;
-                startButton.textContent = "Try Again";
             }
         }
-
-        // Function to stop scanning
-        function stopScan() {
-            codeReader.reset();
-            startButton.disabled = false;
-            startButton.textContent = "Start Scan";
-            scanRegion.classList.remove("detected");
+        
+        // LoyaltyDiscountHandler concrete class
+        class LoyaltyDiscountHandler extends DiscountHandler {
+            constructor() {
+                super("Loyalty Discount", 10);
+            }
+            
+            calculateDiscount(request) {
+                if (request.isLoyaltyMember) {
+                    this.appliedDiscount = request.cartAmount * (this.discountPercent / 100);
+                    request.discounts.push({
+                        name: `${this.name} (${this.discountPercent}%)`,
+                        amount: this.appliedDiscount,
+                        handler: this
+                    });
+                    
+                    request.discountDetails += `<div class="discount-item">Loyalty Discount: $${this.appliedDiscount.toFixed(2)}</div>`;
+                } else {
+                    request.discountDetails += `<div class="discount-item not-applied">Loyalty Discount: Not applicable</div>`;
+                }
+            }
         }
         
-        // Function to use the scan result
-        function useScanResult() {
-            if (lastScanResult) {
-                document.getElementById('rawData').value = lastScanResult;
-                toggleScanner(); // Close scanner after using result
+        // BulkPurchaseDiscountHandler concrete class
+        class BulkPurchaseDiscountHandler extends DiscountHandler {
+            constructor() {
+                super("Bulk Purchase Discount", 15);
+            }
+            
+            calculateDiscount(request) {
+                if (request.cartAmount >= 500) {
+                    this.appliedDiscount = request.cartAmount * (this.discountPercent / 100);
+                    request.discounts.push({
+                        name: `${this.name} (${this.discountPercent}%)`,
+                        amount: this.appliedDiscount,
+                        handler: this
+                    });
+                    
+                    request.discountDetails += `<div class="discount-item">Bulk Purchase Discount: $${this.appliedDiscount.toFixed(2)}</div>`;
+                } else {
+                    request.discountDetails += `<div class="discount-item not-applied">Bulk Purchase Discount: Not applicable (minimum $500 purchase)</div>`;
+                }
+            }
+        }
+        
+        // FirstTimeCustomerDiscountHandler concrete class
+        class FirstTimeCustomerDiscountHandler extends DiscountHandler {
+            constructor() {
+                super("First-Time Customer Discount", 5);
+            }
+            
+            calculateDiscount(request) {
+                if (request.isFirstTimeCustomer) {
+                    this.appliedDiscount = request.cartAmount * (this.discountPercent / 100);
+                    request.discounts.push({
+                        name: `${this.name} (${this.discountPercent}%)`,
+                        amount: this.appliedDiscount,
+                        handler: this
+                    });
+                    
+                    request.discountDetails += `<div class="discount-item">First-Time Customer Discount: $${this.appliedDiscount.toFixed(2)}</div>`;
+                } else {
+                    request.discountDetails += `<div class="discount-item not-applied">First-Time Customer Discount: Not applicable</div>`;
+                }
+            }
+        }
+        
+        // ShoppingCart class
+        class ShoppingCart {
+            constructor() {
+                // Create the chain of responsibility
+                this.firstHandler = this.setupDiscountChain();
+            }
+            
+            setupDiscountChain() {
+                // Create handlers
+                const seasonalHandler = new SeasonalDiscountHandler();
+                const loyaltyHandler = new LoyaltyDiscountHandler();
+                const bulkHandler = new BulkPurchaseDiscountHandler();
+                const firstTimeHandler = new FirstTimeCustomerDiscountHandler();
                 
-                // Optionally auto-extract the data
-                if (typeof extractData === 'function') {
-                    extractData();
+                // Setup the chain (in order: Seasonal -> Loyalty -> Bulk -> First-time)
+                seasonalHandler.setNext(loyaltyHandler);
+                loyaltyHandler.setNext(bulkHandler);
+                bulkHandler.setNext(firstTimeHandler);
+                
+                // Return the first handler in the chain
+                return seasonalHandler;
+            }
+            
+            // Process request through the chain
+            processDiscounts(cartAmount, isLoyaltyMember, isSeasonalEvent, isFirstTimeCustomer) {
+                // Create the request object that will pass through the chain
+                const request = {
+                    cartAmount: cartAmount,
+                    isLoyaltyMember: isLoyaltyMember,
+                    isSeasonalEvent: isSeasonalEvent,
+                    isFirstTimeCustomer: isFirstTimeCustomer,
+                    discounts: [],
+                    discountDetails: ''
+                };
+                
+                // Process through the chain
+                this.firstHandler.process(request);
+                
+                // After processing through the chain, apply at most two discounts
+                return this.applyTopDiscounts(request);
+            }
+            
+            // Apply at most two discounts with highest values
+            applyTopDiscounts(request) {
+                // Sort discounts by amount (highest to lowest)
+                request.discounts.sort((a, b) => b.amount - a.amount);
+                
+                // Apply at most two discounts
+                let totalDiscount = 0;
+                let appliedDiscountsText = '';
+                
+                if (request.discounts.length > 0) {
+                    // Apply at most two discounts
+                    const appliedDiscounts = request.discounts.slice(0, Math.min(2, request.discounts.length));
+                    
+                    appliedDiscountsText = '<h3>Applied Discounts:</h3>';
+                    appliedDiscounts.forEach(discount => {
+                        totalDiscount += discount.amount;
+                        appliedDiscountsText += `<div class="discount-item applied">${discount.name}: $${discount.amount.toFixed(2)}</div>`;
+                    });
+                } else {
+                    appliedDiscountsText = '<h3>No discounts applied.</h3>';
                 }
+                
+                // Calculate final price
+                const finalPrice = request.cartAmount - totalDiscount;
+                
+                return {
+                    discountDetails: request.discountDetails,
+                    appliedDiscountsText: appliedDiscountsText,
+                    finalPrice: finalPrice
+                };
             }
         }
         
-        // Handle page visibility changes to manage resources
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                stopScan();
+        // Event listener for the Calculate button
+        document.getElementById('calculateBtn').addEventListener('click', function() {
+            // Get values from form
+            const cartAmount = parseFloat(document.getElementById('cartAmount').value);
+            const isLoyaltyMember = document.getElementById('loyaltyMember').checked;
+            const isSeasonalEvent = document.getElementById('seasonalEvent').checked;
+            const isFirstTimeCustomer = document.getElementById('firstTimeCustomer').checked;
+            
+            // Validate input
+            if (isNaN(cartAmount) || cartAmount <= 0) {
+                alert('Please enter a valid cart amount.');
+                return;
             }
+            
+            // Create shopping cart and process discounts
+            const shoppingCart = new ShoppingCart();
+            const result = shoppingCart.processDiscounts(
+                cartAmount,
+                isLoyaltyMember,
+                isSeasonalEvent,
+                isFirstTimeCustomer
+            );
+            
+            // Display results
+            document.getElementById('discountDetails').innerHTML = result.discountDetails;
+            document.getElementById('appliedDiscounts').innerHTML = result.appliedDiscountsText;
+            document.getElementById('finalPrice').textContent = `$${result.finalPrice.toFixed(2)}`;
+            document.getElementById('result').style.display = 'block';
         });
     </script>
 </body>
