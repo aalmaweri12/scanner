@@ -3,328 +3,1275 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shopping Discount App</title>
+    <title>Dearborn Foods Supermarket | أسواق البركة</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
+        :root {
+            --primary-color: #4CAF50;
+            --accent-color: #FF9800;
+            --light-bg: #f9f9f9;
+            --dark-text: #333;
+            --light-text: #fff;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        h1 {
-            color: #333;
-            text-align: center;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input[type="number"], select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+        
+        * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        input[type="checkbox"] {
+        
+        body {
+            background-color: var(--light-bg);
+            color: var(--dark-text);
+            line-height: 1.6;
+        }
+        
+        /* Language Direction Styles */
+        body.rtl {
+            direction: rtl;
+            text-align: right;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+        
+        /* Header Styles */
+        header {
+            background-color: var(--primary-color);
+            color: var(--light-text);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: var(--box-shadow);
+        }
+        
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo img {
+            height: 60px;
             margin-right: 10px;
         }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
+        
+        .logo-text {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .logo-text h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.2rem;
+        }
+        
+        .logo-text p {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+        }
+        
+        nav li {
+            margin-left: 1.5rem;
+        }
+        
+        nav a {
+            color: var(--light-text);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        nav a:hover {
+            color: var(--accent-color);
+        }
+        
+        .lang-switch {
+            background-color: transparent;
+            border: 2px solid var(--light-text);
+            color: var(--light-text);
+            padding: 0.5rem 1rem;
+            border-radius: var(--border-radius);
             cursor: pointer;
-            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .lang-switch:hover {
+            background-color: var(--light-text);
+            color: var(--primary-color);
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--light-text);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        /* Hero Section Styles */
+        .hero {
+            background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('/api/placeholder/1200/600');
+            background-size: cover;
+            background-position: center;
+            color: var(--light-text);
+            text-align: center;
+            padding: 6rem 0;
+        }
+        
+        .hero h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .hero p {
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto 2rem;
+        }
+        
+        .btn {
+            display: inline-block;
+            background-color: var(--accent-color);
+            color: var(--light-text);
+            padding: 0.8rem 1.5rem;
+            border-radius: var(--border-radius);
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: #e68a00;
+            transform: translateY(-3px);
+        }
+        
+        /* Store Info Section */
+        .store-info {
+            padding: 3rem 0;
+            background-color: #fff;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+        
+        .info-card {
+            text-align: center;
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            background-color: var(--light-bg);
+            transition: transform 0.3s;
+        }
+        
+        .info-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .info-card i {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+        
+        .info-card h3 {
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Featured Sections */
+        .featured-section {
+            padding: 3rem 0;
+        }
+        
+        .section-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .section-header h2 {
+            font-size: 2rem;
+            color: var(--primary-color);
+            position: relative;
+            display: inline-block;
+            padding-bottom: 10px;
+        }
+        
+        .section-header h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 25%;
+            right: 25%;
+            height: 3px;
+            background-color: var(--accent-color);
+        }
+        
+        .departments-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+        
+        .department-card {
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--box-shadow);
+            transition: transform 0.3s;
+        }
+        
+        .department-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .department-card img {
             width: 100%;
-            margin-top: 10px;
+            height: 200px;
+            object-fit: cover;
         }
-        button:hover {
-            background-color: #45a049;
+        
+        .department-card-content {
+            padding: 1.5rem;
+            background-color: #fff;
         }
-        #result {
-            margin-top: 20px;
-            padding: 15px;
+        
+        .department-card h3 {
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Weekly Deals */
+        .deals-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        
+        .deal-card {
+            background-color: #fff;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .deal-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+        
+        .deal-content {
+            padding: 1.5rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .deal-price {
+            color: var(--accent-color);
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 0.5rem 0;
+        }
+        
+        .deal-original-price {
+            text-decoration: line-through;
+            color: #999;
+            margin-left: 0.5rem;
+        }
+        
+        /* About Us */
+        .about-section {
+            background-color: #fff;
+            padding: 4rem 0;
+        }
+        
+        .about-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+        }
+        
+        .about-image {
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--box-shadow);
+        }
+        
+        .about-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .about-text h2 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+        
+        .about-text p {
+            margin-bottom: 1rem;
+        }
+        
+        /* Contact Form */
+        .contact-section {
+            padding: 4rem 0;
+            background-color: var(--light-bg);
+        }
+        
+        .contact-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+        }
+        
+        .contact-form {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.8rem;
             border: 1px solid #ddd;
-            border-radius: 4px;
-            background-color: #f9f9f9;
+            border-radius: var(--border-radius);
+            font-family: inherit;
+            font-size: 1rem;
+        }
+        
+        .form-group textarea {
+            height: 150px;
+            resize: vertical;
+        }
+        
+        .submit-btn {
+            background-color: var(--primary-color);
+            color: var(--light-text);
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .submit-btn:hover {
+            background-color: #3e8e41;
+        }
+        
+        .contact-info {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .contact-info h3 {
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+        
+        .contact-info-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+        
+        .contact-info-item i {
+            font-size: 1.2rem;
+            color: var(--accent-color);
+            margin-right: 0.8rem;
+            margin-top: 0.2rem;
+        }
+        
+        .google-map {
+            margin-top: 2rem;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            height: 300px;
+        }
+        
+        .google-map iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        /* Footer Styles */
+        footer {
+            background-color: var(--primary-color);
+            color: var(--light-text);
+            padding: 3rem 0 1.5rem;
+        }
+        
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .footer-column h3 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+        
+        .footer-column h3::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 2px;
+            background-color: var(--accent-color);
+        }
+        
+        .footer-column ul {
+            list-style: none;
+        }
+        
+        .footer-column ul li {
+            margin-bottom: 0.8rem;
+        }
+        
+        .footer-column a {
+            color: var(--light-text);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .footer-column a:hover {
+            color: var(--accent-color);
+        }
+        
+        .social-links {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .social-links a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+        
+        .social-links a:hover {
+            background-color: var(--accent-color);
+            transform: translateY(-3px);
+        }
+        
+        .newsletter-form {
+            display: flex;
+            margin-top: 1rem;
+        }
+        
+        .newsletter-form input {
+            flex-grow: 1;
+            padding: 0.8rem;
+            border: none;
+            border-radius: var(--border-radius) 0 0 var(--border-radius);
+            font-family: inherit;
+        }
+        
+        .newsletter-form button {
+            background-color: var(--accent-color);
+            color: var(--light-text);
+            border: none;
+            padding: 0 1rem;
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+            cursor: pointer;
+        }
+        
+        .copyright {
+            text-align: center;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Responsive Styles */
+        @media (max-width: 991px) {
+            .about-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .contact-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .info-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .desktop-menu {
+                display: none;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .hero h2 {
+                font-size: 2rem;
+            }
+            
+            .hero p {
+                font-size: 1rem;
+            }
+        }
+        
+        /* Mobile Menu */
+        .mobile-menu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 70%;
+            height: 100%;
+            background-color: var(--primary-color);
+            z-index: 2000;
+            padding: 2rem;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .mobile-menu.active {
+            transform: translateX(0);
+        }
+        
+        .mobile-menu-close {
+            background: none;
+            border: none;
+            color: var(--light-text);
+            font-size: 1.5rem;
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            cursor: pointer;
+        }
+        
+        .mobile-menu ul {
+            list-style: none;
+            margin-top: 3rem;
+        }
+        
+        .mobile-menu li {
+            margin-bottom: 1.5rem;
+        }
+        
+        .mobile-menu a {
+            color: var(--light-text);
+            text-decoration: none;
+            font-size: 1.2rem;
+            display: block;
+            padding: 0.5rem 0;
+        }
+        
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1500;
             display: none;
         }
-        .discount-item {
-            margin-bottom: 8px;
-        }
-        .applied {
-            color: green;
-            font-weight: bold;
-        }
-        .not-applied {
-            color: #999;
+        
+        .overlay.active {
+            display: block;
         }
     </style>
 </head>
 <body>
-    <h1>Shopping Discount App</h1>
-    
-    <div class="form-group">
-        <label for="cartAmount">Total Cart Amount ($):</label>
-        <input type="number" id="cartAmount" min="0" step="0.01" required>
+    <!-- Mobile Menu -->
+    <div class="mobile-menu">
+        <button class="mobile-menu-close"><i class="fas fa-times"></i></button>
+        <ul>
+            <li><a href="#" class="nav-home">Home</a></li>
+            <li><a href="#about" class="nav-about">About Us</a></li>
+            <li><a href="#departments" class="nav-departments">Departments</a></li>
+            <li><a href="#deals" class="nav-deals">Weekly Deals</a></li>
+            <li><a href="#contact" class="nav-contact">Contact</a></li>
+        </ul>
     </div>
+    <div class="overlay"></div>
     
-    <div class="form-group">
-        <label for="options">Customer Options:</label>
-        <div>
-            <input type="checkbox" id="loyaltyMember">
-            <label for="loyaltyMember" style="display: inline;">Loyalty Member (10% discount)</label>
+    <!-- Header -->
+    <header>
+        <div class="container header-container">
+            <div class="logo">
+                <img src="logo.png" alt="Dearborn Foods Logo">
+                <div class="logo-text">
+                    <h1 class="store-name">Dearborn Foods</h1>
+                    <p class="store-arabic-name">أسواق البركة</p>
+                </div>
+            </div>
+            
+            <nav class="desktop-menu">
+                <ul>
+                    <li><a href="#" class="nav-home">Home</a></li>
+                    <li><a href="#about" class="nav-about">About Us</a></li>
+                    <li><a href="#departments" class="nav-departments">Departments</a></li>
+                    <li><a href="#deals" class="nav-deals">Weekly Deals</a></li>
+                    <li><a href="#contact" class="nav-contact">Contact</a></li>
+                </ul>
+            </nav>
+            
+            <button class="lang-switch">عربي</button>
+            <button class="mobile-menu-btn"><i class="fas fa-bars"></i></button>
         </div>
-        <div>
-            <input type="checkbox" id="seasonalEvent">
-            <label for="seasonalEvent" style="display: inline;">Seasonal Event (20% discount)</label>
-        </div>
-        <div>
-            <input type="checkbox" id="firstTimeCustomer">
-            <label for="firstTimeCustomer" style="display: inline;">First-Time Customer (5% discount)</label>
-        </div>
-    </div>
+    </header>
     
-    <button id="calculateBtn">Calculate Discount</button>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h2 class="hero-title">Welcome to Dearborn Foods Supermarket</h2>
+            <p class="hero-subtitle">Your neighborhood grocery store featuring fresh produce, halal meats, and everyday essentials at affordable prices.</p>
+            <a href="#deals" class="btn btn-primary deal-btn">View Weekly Deals</a>
+        </div>
+    </section>
     
-    <div id="result">
-        <h3>Discount Summary:</h3>
-        <div id="discountDetails"></div>
-        <div id="appliedDiscounts"></div>
-        <h3>Final Price: <span id="finalPrice">$0.00</span></h3>
-    </div>
-
+    <!-- Store Info Section -->
+    <section class="store-info">
+        <div class="container">
+            <div class="info-grid">
+                <div class="info-card">
+                    <i class="far fa-clock"></i>
+                    <h3 class="hours-title">Store Hours</h3>
+                    <p class="hours-text">Open Daily: 8 AM – 11 PM</p>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <h3 class="location-title">Location</h3>
+                    <p class="location-text">4716 Greenfield Rd, Dearborn, MI 48126</p>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-phone-alt"></i>
+                    <h3 class="phone-title">Phone</h3>
+                    <p class="phone-text">(313) 429-3064</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Departments Section -->
+    <section id="departments" class="featured-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="departments-title">Our Departments</h2>
+            </div>
+            <div class="departments-grid">
+                <div class="department-card">
+                    <img src="freash.png" alt="Fresh Produce Department" class="dept-img">
+                    <div class="department-card-content">
+                        <h3 class="dept-name">Fresh Produce</h3>
+                        <p class="dept-desc">Locally sourced fruits and vegetables delivered daily for maximum freshness.</p>
+                    </div>
+                </div>
+                <div class="department-card">
+                    <img src="meat.png" alt="Halal Meat Market" class="dept-img">
+                    <div class="department-card-content">
+                        <h3 class="dept-name">Halal Meat Market</h3>
+                        <p class="dept-desc">Premium quality, hand-cut halal meats from trusted sources.</p>
+                    </div>
+                </div>
+                <div class="department-card">
+                    <img src="/api/placeholder/400/320" alt="Grocery Essentials" class="dept-img">
+                    <div class="department-card-content">
+                        <h3 class="dept-name">Grocery Essentials</h3>
+                        <p class="dept-desc">All your pantry staples and international ingredients at competitive prices.</p>
+                    </div>
+                </div>
+                <div class="department-card">
+                    <img src="/api/placeholder/400/320" alt="Dairy & Frozen Foods" class="dept-img">
+                    <div class="department-card-content">
+                        <h3 class="dept-name">Dairy & Frozen</h3>
+                        <p class="dept-desc">Fresh dairy products and a wide selection of frozen foods for your convenience.</p>
+                    </div>
+                </div>
+                <div class="department-card">
+                    <img src="/api/placeholder/400/320" alt="Household Products" class="dept-img">
+                    <div class="department-card-content">
+                        <h3 class="dept-name">Household Products</h3>
+                        <p class="dept-desc">Everything you need to keep your home clean and running smoothly.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Weekly Deals Section -->
+    <section id="deals" class="featured-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="deals-title">Weekly Deals</h2>
+            </div>
+            <div class="deals-container">
+                <div class="deal-card">
+                    <img src="/api/placeholder/400/320" alt="Meat Special" class="deal-img">
+                    <div class="deal-content">
+                        <h3 class="deal-name">Premium Ground Beef</h3>
+                        <p class="deal-price">$4.99/lb <span class="deal-original-price">$6.99/lb</span></p>
+                        <p class="deal-desc">Fresh, lean ground beef perfect for burgers, meatballs, and more.</p>
+                    </div>
+                </div>
+                <div class="deal-card">
+                    <img src="/api/placeholder/400/320" alt="Produce Special" class="deal-img">
+                    <div class="deal-content">
+                        <h3 class="deal-name">Organic Bananas</h3>
+                        <p class="deal-price">$0.69/lb <span class="deal-original-price">$0.99/lb</span></p>
+                        <p class="deal-desc">Sweet, ripe organic bananas from sustainable farms.</p>
+                    </div>
+                </div>
+                <div class="deal-card">
+                    <img src="/api/placeholder/400/320" alt="Grocery Special" class="deal-img">
+                    <div class="deal-content">
+                        <h3 class="deal-name">Extra Virgin Olive Oil</h3>
+                        <p class="deal-price">$9.99 <span class="deal-original-price">$12.99</span></p>
+                        <p class="deal-desc">Premium quality imported olive oil, 750ml bottle.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- About Section -->
+    <section id="about" class="about-section">
+        <div class="container">
+            <div class="about-content">
+                <div class="about-image">
+                    <img src="/api/placeholder/400/320" alt="Dearborn Foods Storefront" class="about-img">
+                </div>
+                <div class="about-text">
+                    <h2 class="about-title">About Dearborn Foods</h2>
+                    <p class="about-desc">Dearborn Foods Supermarket (أسواق البركة) has been proudly serving the Dearborn community for over 15 years. What started as a small family-owned grocery store has grown into a full-service supermarket while maintaining our commitment to quality, freshness, and value.</p>
+                    <p class="about-desc">Our specialty halal meat market is at the heart of our store, offering premium cuts prepared according to Islamic traditions. We work directly with trusted local farmers to ensure the highest quality meats for our customers.</p>
+                    <p class="about-desc">As members of the Dearborn community ourselves, we understand the importance of affordable groceries without compromising on quality. We strive to provide exceptional customer service and create a shopping environment where everyone feels welcome.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Contact Section -->
+    <section id="contact" class="contact-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="contact-title">Contact Us</h2>
+            </div>
+            <div class="contact-container">
+                <div class="contact-form">
+                    <form id="contact-form">
+                        <div class="form-group">
+                            <label for="name" class="form-label">Name</label>
+                            <input type="text" id="name" name="name" required class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" id="email" name="email" required class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="subject" class="form-label">Subject</label>
+                            <input type="text" id="subject" name="subject" required class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="message" class="form-label">Message</label>
+                            <textarea id="message" name="message" required class="form-control"></textarea>
+                        </div>
+                        <button type="submit" class="submit-btn form-submit">Send Message</button>
+                    </form>
+                </div>
+                <div class="contact-info">
+                    <h3 class="contact-info-title">Store Information</h3>
+                    <div class="contact-info-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <div>
+                            <p class="contact-address">4716 Greenfield Rd</p>
+                            <p class="contact-address">Dearborn, MI 48126</p>
+                        </div>
+                    </div>
+                    <div class="contact-info-item">
+                        <i class="fas fa-phone-alt"></i>
+                        <p class="contact-phone">(313) 429-3064</p>
+                    </div>
+                    <div class="contact-info-item">
+                        <i class="far fa-clock"></i>
+                        <p class="contact-hours">Open Daily: 8 AM – 11 PM</p>
+                    </div>
+                    <div class="contact-info-item">
+                        <i class="fas fa-envelope"></i>
+                        <p class="contact-email">info@dearbornfoods.com</p>
+                    </div>
+                    <div class="google-map">
+                        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2949.795456019925!2d-83.18264878455113!3d42.32603307918987!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x883b356ae6f25295%3A0xab415af31874275d!2s4716%20Greenfield%20Rd%2C%20Dearborn%2C%20MI%2048126!5e0!3m2!1sen!2sus!4v1619192349971!5m2!1sen!2sus" allowfullscreen="" loading="lazy"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-column">
+                    <h3 class="footer-title">Dearborn Foods</h3>
+                    <p class="footer-desc">Your neighborhood grocery store featuring premium halal meats and fresh produce at affordable prices.</p>
+                </div>
+                <div class="footer-column">
+                    <h3 class="quick-links-title">Quick Links</h3>
+                    <ul>
+                        <li><a href="#" class="footer-home">Home</a></li>
+                        <li><a href="#about" class="footer-about">About Us</a></li>
+                        <li><a href="#departments" class="footer-departments">Departments</a></li>
+                        <li><a href="#deals" class="footer-deals">Weekly Deals</a></li>
+                        <li><a href="#contact" class="footer-contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h3 class="departments-title">Departments</h3>
+                    <ul>
+                        <li><a href="#departments" class="footer-produce">Fresh Produce</a></li>
+                        <li><a href="#departments" class="footer-meat">Halal Meat Market</a></li>
+                        <li><a href="#departments" class="footer-grocery">Grocery Essentials</a></li>
+                        <li><a href="#departments" class="footer-dairy">Dairy & Frozen</a></li>
+                        <li><a href="#departments" class="footer-household">Household Products</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h3 class="connect-title">Connect With Us</h3>
+                    <div class="social-links">
+                        <a href="#" class="social-facebook"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="social-instagram"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="social-twitter"><i class="fab fa-twitter"></i></a>
+                    </div>
+                    <h3 class="newsletter-title">Newsletter</h3>
+                    <p class="newsletter-desc">Subscribe to receive our weekly deals and updates.</p>
+                    <form class="newsletter-form">
+                        <input type="email" placeholder="Your Email" required class="newsletter-input">
+                        <button type="submit" class="newsletter-btn"><i class="fas fa-paper-plane"></i></button>
+                    </form>
+                </div>
+            </div>
+            <div class="copyright">
+                <p>&copy; 2025 Dearborn Foods Supermarket (أسواق البركة). All Rights Reserved.</p>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- JavaScript -->
     <script>
-        // Discount Handler abstract class (base prototype for our handlers)
-        class DiscountHandler {
-            constructor(name, discountPercent) {
-                this.name = name;
-                this.discountPercent = discountPercent;
-                this.nextHandler = null;
-                this.appliedDiscount = 0;
-            }
+        // DOM Elements
+        const langToggle = document.querySelector('.lang-switch');
+        const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+        const mobileMenuCloseBtn = document.querySelector('.mobile-menu-close');
+        const mobileMenu = document.querySelector('.mobile-menu');
+        const overlay = document.querySelector('.overlay');
+        
+        // English Text Content
+        const englishContent = {
+            langBtn: 'عربي',
+            storeNameLogo: 'Dearborn Foods',
+            navHome: 'Home',
+            navAbout: 'About Us',
+            navDepartments: 'Departments',
+            navDeals: 'Weekly Deals',
+            navContact: 'Contact',
+            heroTitle: 'Welcome to Dearborn Foods Supermarket',
+            heroSubtitle: 'Your neighborhood grocery store featuring fresh produce, halal meats, and everyday essentials at affordable prices.',
+            dealBtn: 'View Weekly Deals',
+            hoursTitle: 'Store Hours',
+            hoursText: 'Open Daily: 8 AM – 11 PM',
+            locationTitle: 'Location',
+            locationText: '4716 Greenfield Rd, Dearborn, MI 48126',
+            phoneTitle: 'Phone',
+            phoneText: '(313) 429-3064',
+            departmentsTitle: 'Our Departments',
             
-            // Set the next handler in the chain
-            setNext(handler) {
-                this.nextHandler = handler;
-                return handler; // Return handler to allow chaining
-            }
+            // Department names
+            deptNames: [
+                'Fresh Produce',
+                'Halal Meat Market',
+                'Grocery Essentials', 
+                'Dairy & Frozen',
+                'Household Products'
+            ],
             
-            // Process the request and pass to next handler if exists
-            process(request) {
-                // Each concrete handler will implement this
-                this.calculateDiscount(request);
-                
-                // Pass to the next handler if it exists
-                if (this.nextHandler) {
-                    this.nextHandler.process(request);
+            // Department descriptions
+            deptDescs: [
+                'Locally sourced fruits and vegetables delivered daily for maximum freshness.',
+                'Premium quality, hand-cut halal meats from trusted sources.',
+                'All your pantry staples and international ingredients at competitive prices.',
+                'Fresh dairy products and a wide selection of frozen foods for your convenience.',
+                'Everything you need to keep your home clean and running smoothly.'
+            ],
+            
+            dealsTitle: 'Weekly Deals',
+            dealNames: [
+                'Premium Ground Beef', 
+                'Organic Bananas',
+                'Extra Virgin Olive Oil'
+            ],
+            dealPrices: [
+                '$4.99/lb',
+                '$0.69/lb',
+                '$9.99'
+            ],
+            dealOrigPrices: [
+                '$6.99/lb',
+                '$0.99/lb',
+                '$12.99'
+            ],
+            dealDescs: [
+                'Fresh, lean ground beef perfect for burgers, meatballs, and more.',
+                'Sweet, ripe organic bananas from sustainable farms.',
+                'Premium quality imported olive oil, 750ml bottle.'
+            ],
+            
+            aboutTitle: 'About Dearborn Foods',
+            aboutDescs: [
+                'Dearborn Foods Supermarket (أسواق البركة) has been proudly serving the Dearborn community for over 15 years. What started as a small family-owned grocery store has grown into a full-service supermarket while maintaining our commitment to quality, freshness, and value.',
+                'Our specialty halal meat market is at the heart of our store, offering premium cuts prepared according to Islamic traditions. We work directly with trusted local farmers to ensure the highest quality meats for our customers.',
+                'As members of the Dearborn community ourselves, we understand the importance of affordable groceries without compromising on quality. We strive to provide exceptional customer service and create a shopping environment where everyone feels welcome.'
+            ],
+            
+            contactTitle: 'Contact Us',
+            formLabels: ['Name', 'Email', 'Subject', 'Message'],
+            formSubmit: 'Send Message',
+            contactInfoTitle: 'Store Information',
+            contactAddress: [
+                '4716 Greenfield Rd',
+                'Dearborn, MI 48126'
+            ],
+            contactPhone: '(313) 429-3064',
+            contactHours: 'Open Daily: 8 AM – 11 PM',
+            contactEmail: 'info@dearbornfoods.com',
+            
+            footerTitle: 'Dearborn Foods',
+            footerDesc: 'Your neighborhood grocery store featuring premium halal meats and fresh produce at affordable prices.',
+            quickLinksTitle: 'Quick Links',
+            departmentsTitle2: 'Departments',
+            connectTitle: 'Connect With Us',
+            newsletterTitle: 'Newsletter',
+            newsletterDesc: 'Subscribe to receive our weekly deals and updates.',
+            newsletterPlaceholder: 'Your Email',
+            copyright: '© 2025 Dearborn Foods Supermarket (أسواق البركة). All Rights Reserved.'
+        };
+        
+        // Arabic Text Content
+        const arabicContent = {
+            langBtn: 'English',
+            storeNameLogo: 'أسواق البركة',
+            navHome: 'الرئيسية',
+            navAbout: 'من نحن',
+            navDepartments: 'الأقسام',
+            navDeals: 'العروض الأسبوعية',
+            navContact: 'اتصل بنا',
+            heroTitle: 'مرحباً بكم في أسواق البركة',
+            heroSubtitle: 'متجر البقالة المحلي الذي يقدم منتجات طازجة ولحوم حلال والضروريات اليومية بأسعار معقولة.',
+            dealBtn: 'شاهد العروض الأسبوعية',
+            hoursTitle: 'ساعات العمل',
+            hoursText: 'مفتوح يومياً: 8 صباحاً - 11 مساءً',
+            locationTitle: 'الموقع',
+            locationText: '4716 شارع غرينفيلد، ديربورن، ميشيغان 48126',
+            phoneTitle: 'الهاتف',
+            phoneText: '(313) 429-3064',
+            departmentsTitle: 'أقسامنا',
+            
+            // Department names
+            deptNames: [
+                'الخضروات والفواكه الطازجة',
+                'سوق اللحوم الحلال',
+                'البقالة الأساسية',
+                'منتجات الألبان والمجمدات',
+                'المنتجات المنزلية'
+            ],
+            
+            // Department descriptions
+            deptDescs: [
+                'فواكه وخضروات محلية المصدر يتم توصيلها يوميًا لضمان أقصى درجات الطزاجة.',
+                'لحوم حلال عالية الجودة مقطعة يدويًا من مصادر موثوقة.',
+                'جميع المواد الغذائية الأساسية والمكونات العالمية بأسعار تنافسية.',
+                'منتجات ألبان طازجة ومجموعة واسعة من الأطعمة المجمدة لراحتك.',
+                'كل ما تحتاجه للحفاظ على منزلك نظيفًا وعمله بسلاسة.'
+            ],
+            
+            dealsTitle: 'العروض الأسبوعية',
+            dealNames: [
+                'لحم بقري مفروم فاخر',
+                'موز عضوي',
+                'زيت زيتون بكر ممتاز'
+            ],
+            dealPrices: [
+                '$4.99/رطل',
+                '$0.69/رطل',
+                '$9.99'
+            ],
+            dealOrigPrices: [
+                '$6.99/رطل',
+                '$0.99/رطل',
+                '$12.99'
+            ],
+            dealDescs: [
+                'لحم بقري طازج وقليل الدهن مثالي للبرغر وكرات اللحم والمزيد.',
+                'موز عضوي حلو وناضج من مزارع مستدامة.',
+                'زيت زيتون مستورد عالي الجودة، زجاجة 750 مل.'
+            ],
+            
+            aboutTitle: 'عن أسواق البركة',
+            aboutDescs: [
+                'تفخر أسواق البركة بخدمة مجتمع ديربورن لأكثر من 15 عامًا. ما بدأ كمتجر بقالة صغير مملوك للعائلة نما ليصبح سوبر ماركت متكامل الخدمات مع الحفاظ على التزامنا بالجودة والطزاجة والقيمة.',
+                'سوق اللحوم الحلال المتخصص هو قلب متجرنا، حيث نقدم قطعًا فاخرة معدة وفقًا للتقاليد الإسلامية. نحن نعمل مباشرة مع المزارعين المحليين الموثوقين لضمان أعلى جودة من اللحوم لعملائنا.',
+                'بصفتنا أعضاء في مجتمع ديربورن، فإننا ندرك أهمية البقالة بأسعار معقولة دون المساس بالجودة. نسعى جاهدين لتقديم خدمة عملاء استثنائية وخلق بيئة تسوق يشعر فيها الجميع بالترحيب.'
+            ],
+            
+            contactTitle: 'اتصل بنا',
+            formLabels: ['الاسم', 'البريد الإلكتروني', 'الموضوع', 'الرسالة'],
+            formSubmit: 'إرسال الرسالة',
+            contactInfoTitle: 'معلومات المتجر',
+            contactAddress: [
+                '4716 شارع غرينفيلد',
+                'ديربورن، ميشيغان 48126'
+            ],
+            contactPhone: '(313) 429-3064',
+            contactHours: 'مفتوح يومياً: 8 صباحاً - 11 مساءً',
+            contactEmail: 'info@dearbornfoods.com',
+            
+            footerTitle: 'أسواق البركة',
+            footerDesc: 'متجر البقالة المحلي الذي يقدم لحوم حلال فاخرة ومنتجات طازجة بأسعار معقولة.',
+            quickLinksTitle: 'روابط سريعة',
+            departmentsTitle2: 'الأقسام',
+            connectTitle: 'تواصل معنا',
+            newsletterTitle: 'النشرة الإخبارية',
+            newsletterDesc: 'اشترك للحصول على عروضنا الأسبوعية والتحديثات.',
+            newsletterPlaceholder: 'بريدك الإلكتروني',
+            copyright: '© 2025 أسواق البركة. جميع الحقوق محفوظة.'
+        };
+        
+        // Current language state
+        let isArabic = false;
+        
+        // Function to update content based on language
+        function updateContent(content) {
+            // Update language button
+            langToggle.textContent = content.langBtn;
+            
+            // Update store name in logo
+            document.querySelector('.store-name').textContent = content.storeNameLogo;
+            
+            // Update navigation items
+            document.querySelectorAll('.nav-home').forEach(el => el.textContent = content.navHome);
+            document.querySelectorAll('.nav-about').forEach(el => el.textContent = content.navAbout);
+            document.querySelectorAll('.nav-departments').forEach(el => el.textContent = content.navDepartments);
+            document.querySelectorAll('.nav-deals').forEach(el => el.textContent = content.navDeals);
+            document.querySelectorAll('.nav-contact').forEach(el => el.textContent = content.navContact);
+            
+            // Update hero section
+            document.querySelector('.hero-title').textContent = content.heroTitle;
+            document.querySelector('.hero-subtitle').textContent = content.heroSubtitle;
+            document.querySelector('.deal-btn').textContent = content.dealBtn;
+            
+            // Update store info section
+            document.querySelector('.hours-title').textContent = content.hoursTitle;
+            document.querySelector('.hours-text').textContent = content.hoursText;
+            document.querySelector('.location-title').textContent = content.locationTitle;
+            document.querySelector('.location-text').textContent = content.locationText;
+            document.querySelector('.phone-title').textContent = content.phoneTitle;
+            document.querySelector('.phone-text').textContent = content.phoneText;
+            
+            // Update departments section
+            document.querySelector('.departments-title').textContent = content.departmentsTitle;
+            
+            // Update department cards
+            const deptCards = document.querySelectorAll('.department-card');
+            deptCards.forEach((card, index) => {
+                if (index < content.deptNames.length) {
+                    card.querySelector('.dept-name').textContent = content.deptNames[index];
+                    card.querySelector('.dept-desc').textContent = content.deptDescs[index];
                 }
-            }
+            });
             
-            // Calculate discount (to be implemented by concrete handlers)
-            calculateDiscount(request) {
-                // Abstract method - implemented by concrete handlers
-            }
+            // Update deals section
+            document.querySelector('.deals-title').textContent = content.dealsTitle;
+            
+            // Update deal cards
+            const dealCards = document.querySelectorAll('.deal-card');
+            dealCards.forEach((card, index) => {
+                if (index < content.dealNames.length) {
+                    card.querySelector('.deal-name').textContent = content.dealNames[index];
+                    card.querySelector('.deal-price').innerHTML = `${content.dealPrices[index]} <span class="deal-original-price">${content.dealOrigPrices[index]}</span>`;
+                    card.querySelector('.deal-desc').textContent = content.dealDescs[index];
+                }
+            });
+            
+            // Update about section
+            document.querySelector('.about-title').textContent = content.aboutTitle;
+            const aboutDescs = document.querySelectorAll('.about-desc');
+            aboutDescs.forEach((desc, index) => {
+                if (index < content.aboutDescs.length) {
+                    desc.textContent = content.aboutDescs[index];
+                }
+            });
+            
+            // Update contact section
+            document.querySelector('.contact-title').textContent = content.contactTitle;
+            const formLabels = document.querySelectorAll('.form-label');
+            formLabels.forEach((label, index) => {
+                if (index < content.formLabels.length) {
+                    label.textContent = content.formLabels[index];
+                }
+            });
+            document.querySelector('.form-submit').textContent = content.formSubmit;
+            document.querySelector('.contact-info-title').textContent = content.contactInfoTitle;
+            
+            const contactAddress = document.querySelectorAll('.contact-address');
+            contactAddress.forEach((address, index) => {
+                if (index < content.contactAddress.length) {
+                    address.textContent = content.contactAddress[index];
+                }
+            });
+            
+            document.querySelector('.contact-phone').textContent = content.contactPhone;
+            document.querySelector('.contact-hours').textContent = content.contactHours;
+            document.querySelector('.contact-email').textContent = content.contactEmail;
+            
+            // Update footer
+            document.querySelector('.footer-title').textContent = content.footerTitle;
+            document.querySelector('.footer-desc').textContent = content.footerDesc;
+            document.querySelector('.quick-links-title').textContent = content.quickLinksTitle;
+            document.querySelector('.departments-title2').textContent = content.departmentsTitle2;
+            document.querySelector('.connect-title').textContent = content.connectTitle;
+            document.querySelector('.newsletter-title').textContent = content.newsletterTitle;
+            document.querySelector('.newsletter-desc').textContent = content.newsletterDesc;
+            document.querySelector('.newsletter-input').placeholder = content.newsletterPlaceholder;
+            document.querySelector('.copyright p').textContent = content.copyright;
+            
+            // Footer links
+            document.querySelector('.footer-home').textContent = content.navHome;
+            document.querySelector('.footer-about').textContent = content.navAbout;
+            document.querySelector('.footer-departments').textContent = content.navDepartments;
+            document.querySelector('.footer-deals').textContent = content.navDeals;
+            document.querySelector('.footer-contact').textContent = content.navContact;
+            
+            // Footer department links
+            document.querySelector('.footer-produce').textContent = content.deptNames[0];
+            document.querySelector('.footer-meat').textContent = content.deptNames[1];
+            document.querySelector('.footer-grocery').textContent = content.deptNames[2];
+            document.querySelector('.footer-dairy').textContent = content.deptNames[3];
+            document.querySelector('.footer-household').textContent = content.deptNames[4];
         }
         
-        // SeasonalDiscountHandler concrete class
-        class SeasonalDiscountHandler extends DiscountHandler {
-            constructor() {
-                super("Seasonal Discount", 20);
-            }
+        // Toggle language
+        langToggle.addEventListener('click', () => {
+            isArabic = !isArabic;
             
-            calculateDiscount(request) {
-                if (request.isSeasonalEvent) {
-                    this.appliedDiscount = request.cartAmount * (this.discountPercent / 100);
-                    request.discounts.push({
-                        name: `${this.name} (${this.discountPercent}%)`,
-                        amount: this.appliedDiscount,
-                        handler: this
-                    });
-                    
-                    request.discountDetails += `<div class="discount-item">Seasonal Discount: $${this.appliedDiscount.toFixed(2)}</div>`;
-                } else {
-                    request.discountDetails += `<div class="discount-item not-applied">Seasonal Discount: Not applicable</div>`;
-                }
+            // Toggle RTL direction
+            if (isArabic) {
+                document.body.classList.add('rtl');
+                updateContent(arabicContent);
+            } else {
+                document.body.classList.remove('rtl');
+                updateContent(englishContent);
             }
-        }
-        
-        // LoyaltyDiscountHandler concrete class
-        class LoyaltyDiscountHandler extends DiscountHandler {
-            constructor() {
-                super("Loyalty Discount", 10);
-            }
-            
-            calculateDiscount(request) {
-                if (request.isLoyaltyMember) {
-                    this.appliedDiscount = request.cartAmount * (this.discountPercent / 100);
-                    request.discounts.push({
-                        name: `${this.name} (${this.discountPercent}%)`,
-                        amount: this.appliedDiscount,
-                        handler: this
-                    });
-                    
-                    request.discountDetails += `<div class="discount-item">Loyalty Discount: $${this.appliedDiscount.toFixed(2)}</div>`;
-                } else {
-                    request.discountDetails += `<div class="discount-item not-applied">Loyalty Discount: Not applicable</div>`;
-                }
-            }
-        }
-        
-        // BulkPurchaseDiscountHandler concrete class
-        class BulkPurchaseDiscountHandler extends DiscountHandler {
-            constructor() {
-                super("Bulk Purchase Discount", 15);
-            }
-            
-            calculateDiscount(request) {
-                if (request.cartAmount >= 500) {
-                    this.appliedDiscount = request.cartAmount * (this.discountPercent / 100);
-                    request.discounts.push({
-                        name: `${this.name} (${this.discountPercent}%)`,
-                        amount: this.appliedDiscount,
-                        handler: this
-                    });
-                    
-                    request.discountDetails += `<div class="discount-item">Bulk Purchase Discount: $${this.appliedDiscount.toFixed(2)}</div>`;
-                } else {
-                    request.discountDetails += `<div class="discount-item not-applied">Bulk Purchase Discount: Not applicable (minimum $500 purchase)</div>`;
-                }
-            }
-        }
-        
-        // FirstTimeCustomerDiscountHandler concrete class
-        class FirstTimeCustomerDiscountHandler extends DiscountHandler {
-            constructor() {
-                super("First-Time Customer Discount", 5);
-            }
-            
-            calculateDiscount(request) {
-                if (request.isFirstTimeCustomer) {
-                    this.appliedDiscount = request.cartAmount * (this.discountPercent / 100);
-                    request.discounts.push({
-                        name: `${this.name} (${this.discountPercent}%)`,
-                        amount: this.appliedDiscount,
-                        handler: this
-                    });
-                    
-                    request.discountDetails += `<div class="discount-item">First-Time Customer Discount: $${this.appliedDiscount.toFixed(2)}</div>`;
-                } else {
-                    request.discountDetails += `<div class="discount-item not-applied">First-Time Customer Discount: Not applicable</div>`;
-                }
-            }
-        }
-        
-        // ShoppingCart class
-        class ShoppingCart {
-            constructor() {
-                // Create the chain of responsibility
-                this.firstHandler = this.setupDiscountChain();
-            }
-            
-            setupDiscountChain() {
-                // Create handlers
-                const seasonalHandler = new SeasonalDiscountHandler();
-                const loyaltyHandler = new LoyaltyDiscountHandler();
-                const bulkHandler = new BulkPurchaseDiscountHandler();
-                const firstTimeHandler = new FirstTimeCustomerDiscountHandler();
-                
-                // Setup the chain (in order: Seasonal -> Loyalty -> Bulk -> First-time)
-                seasonalHandler.setNext(loyaltyHandler);
-                loyaltyHandler.setNext(bulkHandler);
-                bulkHandler.setNext(firstTimeHandler);
-                
-                // Return the first handler in the chain
-                return seasonalHandler;
-            }
-            
-            // Process request through the chain
-            processDiscounts(cartAmount, isLoyaltyMember, isSeasonalEvent, isFirstTimeCustomer) {
-                // Create the request object that will pass through the chain
-                const request = {
-                    cartAmount: cartAmount,
-                    isLoyaltyMember: isLoyaltyMember,
-                    isSeasonalEvent: isSeasonalEvent,
-                    isFirstTimeCustomer: isFirstTimeCustomer,
-                    discounts: [],
-                    discountDetails: ''
-                };
-                
-                // Process through the chain
-                this.firstHandler.process(request);
-                
-                // After processing through the chain, apply at most two discounts
-                return this.applyTopDiscounts(request);
-            }
-            
-            // Apply at most two discounts with highest values
-            applyTopDiscounts(request) {
-                // Sort discounts by amount (highest to lowest)
-                request.discounts.sort((a, b) => b.amount - a.amount);
-                
-                // Apply at most two discounts
-                let totalDiscount = 0;
-                let appliedDiscountsText = '';
-                
-                if (request.discounts.length > 0) {
-                    // Apply at most two discounts
-                    const appliedDiscounts = request.discounts.slice(0, Math.min(2, request.discounts.length));
-                    
-                    appliedDiscountsText = '<h3>Applied Discounts:</h3>';
-                    appliedDiscounts.forEach(discount => {
-                        totalDiscount += discount.amount;
-                        appliedDiscountsText += `<div class="discount-item applied">${discount.name}: $${discount.amount.toFixed(2)}</div>`;
-                    });
-                } else {
-                    appliedDiscountsText = '<h3>No discounts applied.</h3>';
-                }
-                
-                // Calculate final price
-                const finalPrice = request.cartAmount - totalDiscount;
-                
-                return {
-                    discountDetails: request.discountDetails,
-                    appliedDiscountsText: appliedDiscountsText,
-                    finalPrice: finalPrice
-                };
-            }
-        }
-        
-        // Event listener for the Calculate button
-        document.getElementById('calculateBtn').addEventListener('click', function() {
-            // Get values from form
-            const cartAmount = parseFloat(document.getElementById('cartAmount').value);
-            const isLoyaltyMember = document.getElementById('loyaltyMember').checked;
-            const isSeasonalEvent = document.getElementById('seasonalEvent').checked;
-            const isFirstTimeCustomer = document.getElementById('firstTimeCustomer').checked;
-            
-            // Validate input
-            if (isNaN(cartAmount) || cartAmount <= 0) {
-                alert('Please enter a valid cart amount.');
-                return;
-            }
-            
-            // Create shopping cart and process discounts
-            const shoppingCart = new ShoppingCart();
-            const result = shoppingCart.processDiscounts(
-                cartAmount,
-                isLoyaltyMember,
-                isSeasonalEvent,
-                isFirstTimeCustomer
-            );
-            
-            // Display results
-            document.getElementById('discountDetails').innerHTML = result.discountDetails;
-            document.getElementById('appliedDiscounts').innerHTML = result.appliedDiscountsText;
-            document.getElementById('finalPrice').textContent = `$${result.finalPrice.toFixed(2)}`;
-            document.getElementById('result').style.display = 'block';
         });
+        
+        // Mobile menu toggle
+        mobileMenuBtn.addEventListener('click', () => {
+            mobileMenu.classList.add('active');
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+        
+        // Close mobile menu
+        mobileMenuCloseBtn.addEventListener('click', () => {
+            mobileMenu.classList.remove('active');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        });
+        
+        // Close mobile menu when clicking overlay
+        overlay.addEventListener('click', () => {
+            mobileMenu.classList.remove('active');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        });
+        
+        // Close mobile menu when clicking a menu item
+        document.querySelectorAll('.mobile-menu a').forEach(item => {
+            item.addEventListener('click', () => {
+                mobileMenu.classList.remove('active');
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+        });
+        
+        // Form submission
+        const contactForm = document.getElementById('contact-form');
+        if (contactForm) {
+            contactForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                // In real implementation, this would submit the form data to a server
+                alert('Thank you for your message! We will get back to you soon.');
+                this.reset();
+            });
+        }
+        
+        // Newsletter form submission
+        const newsletterForm = document.querySelector('.newsletter-form');
+        if (newsletterForm) {
+            newsletterForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                // In real implementation, this would subscribe the email to a newsletter
+                alert('Thank you for subscribing to our newsletter!');
+                this.reset();
+            });
+        }
     </script>
-</body>
-</html>
