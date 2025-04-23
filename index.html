@@ -711,44 +711,178 @@
             </div>
             <div class="departments-grid">
                 <div class="department-card">
-                    <img src="freash.png" alt="Fresh Produce Department" class="dept-img">
+                    <img src="freash.webp" alt="Fresh Produce Department" class="dept-img">
                     <div class="department-card-content">
                         <h3 class="dept-name">Fresh Produce</h3>
                         <p class="dept-desc">Locally sourced fruits and vegetables delivered daily for maximum freshness.</p>
                     </div>
                 </div>
                 <div class="department-card">
-                    <img src="meat.png" alt="Halal Meat Market" class="dept-img">
+                    <img src="meat.jpeg" alt="Halal Meat Market" class="dept-img">
                     <div class="department-card-content">
                         <h3 class="dept-name">Halal Meat Market</h3>
                         <p class="dept-desc">Premium quality, hand-cut halal meats from trusted sources.</p>
                     </div>
                 </div>
                 <div class="department-card">
-                    <img src="/api/placeholder/400/320" alt="Grocery Essentials" class="dept-img">
+                    <img src="spices.webp" alt="Spices" class="dept-img">
                     <div class="department-card-content">
-                        <h3 class="dept-name">Grocery Essentials</h3>
-                        <p class="dept-desc">All your pantry staples and international ingredients at competitive prices.</p>
+                        <h3 class="dept-name">Spices</h3>
+                        <p class="dept-desc">A rich selection of herbs and spices from around the world to bring authentic flavor to every dish.</p>
                     </div>
                 </div>
+
+
                 <div class="department-card">
-                    <img src="/api/placeholder/400/320" alt="Dairy & Frozen Foods" class="dept-img">
+    
+                    <div class="image-slider">
+                        <img src="frozen.webp" class="dept-img active" alt="Frozen Item 1">
+                        <img src="frozen1.webp" class="dept-img" alt="Frozen Item 2">
+                    </div>
+                
                     <div class="department-card-content">
                         <h3 class="dept-name">Dairy & Frozen</h3>
                         <p class="dept-desc">Fresh dairy products and a wide selection of frozen foods for your convenience.</p>
                     </div>
+                
                 </div>
+                
+                <style>
+                .image-slider {
+                    position: relative;
+                    width: 100%;
+                    height: 320px;
+                    overflow: hidden;
+                }
+                
+                .image-slider img {
+                    position: absolute;
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    opacity: 0;
+                    transition: opacity 0.5s ease;
+                }
+                
+                .image-slider img.active {
+                    opacity: 1;
+                }
+                </style>
+                
+                <script>
+                let index = 0;
+                const slides = document.querySelectorAll('.image-slider img');
+                
+                setInterval(() => {
+                    slides[index].classList.remove('active');
+                    index = (index + 1) % slides.length;
+                    slides[index].classList.add('active');
+                }, 3000); // Change slide every 3 seconds
+                </script>
+                
+
                 <div class="department-card">
-                    <img src="/api/placeholder/400/320" alt="Household Products" class="dept-img">
+    
+                    <div class="image-slider">
+                        <img src="house1.webp" class="dept-img" alt="Household Products 1">
+                        <img src="house2.webp" class="dept-img" alt="Household Products 2">
+                    </div>
+                
                     <div class="department-card-content">
                         <h3 class="dept-name">Household Products</h3>
                         <p class="dept-desc">Everything you need to keep your home clean and running smoothly.</p>
                     </div>
+                
                 </div>
-            </div>
-        </div>
-    </section>
+                
+                <style>
+                .image-slider {
+                    position: relative;
+                    width: 100%;
+                    height: 320px;
+                    overflow: hidden;
+                }
+                
+                .image-slider img {
+                    position: absolute;
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    opacity: 0;
+                    transition: opacity 0.5s ease;
+                }
+                
+                .image-slider img.active {
+                    opacity: 1;
+                }
+                </style>
+                
+                <script>
+                let index1 = 0;
+                const slides1 = document.querySelectorAll('.image-slider img');
+                
+                setInterval(() => {
+                    slides1[index1].classList.remove('active');
+                    index1 = (index1 + 1) % slides1.length;
+                    slides1[index1].classList.add('active');
+                }, 3000); // Change slide every 3 seconds
+                </script>
+            
+        
+
     
+
+
+
+            <div class="department-card">
+            
+                <div class="image-slider">
+                    <img src="canned1.webp" class="dept-img active" alt="Canned Goods Item 1">
+                    <img src="canned2.webp" class="dept-img" alt="Canned Goods 2">
+                </div>
+            
+                <div class="department-card-content">
+                    <h3 class="dept-name">Canned Goods</h3>
+                    <p class="dept-desc">Authentic Arabic canned goods, from foul medames to stuffed grape leaves—conveniently packed with traditional flavor.</p>
+                </div>
+            
+            </div>
+            
+            <style>
+            .image-slider {
+                position: relative;
+                width: 100%;
+                height: 320px;
+                overflow: hidden;
+            }
+            
+            .image-slider img {
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                opacity: 0;
+                transition: opacity 0.5s ease;
+            }
+            
+            .image-slider img.active {
+                opacity: 1;
+            }
+            </style>
+            
+            <script>
+            let index2 = 0;
+            const slides2 = document.querySelectorAll('.image-slider img');
+            
+            setInterval(() => {
+                slides2[index2].classList.remove('active');
+                index2 = (index2 + 1) % slides2.length;
+                slides2[index2].classList.add('active');
+            }, 3000); // Change slide every 3 seconds
+            </script>
+        </div>
+    </div>
+</section>
     <!-- Weekly Deals Section -->
     <section id="deals" class="featured-section">
         <div class="container">
@@ -789,7 +923,7 @@
         <div class="container">
             <div class="about-content">
                 <div class="about-image">
-                    <img src="/api/placeholder/400/320" alt="Dearborn Foods Storefront" class="about-img">
+                    <img src="home.webp" alt="Dearborn Foods Storefront" class="about-img">
                 </div>
                 <div class="about-text">
                     <h2 class="about-title">About Dearborn Foods</h2>
